@@ -16,9 +16,17 @@
 ## Limitações conhecidas desta V1
 - Armazenamento é local por navegador/dispositivo; não existe sincronização automática.
 - Backup JSON pode ser exportado e enviado pelo iCloud Drive e importado no outro dispositivo.
-- Leitura OCR de cupons e extração de faturas PDF ainda não implementadas. O seletor de arquivo é apenas um placeholder.
-- Não há importação de extratos bancários nem conciliação automática ainda.
+- Leitura de cupons por imagem/PDF com OCR e revisão editável de produtos, categorias, data e total.
+- Importação de fatura/extrato PDF com extração heurística de lançamentos e tela de revisão; os formatos variam por banco e podem exigir ajustes.
+- OCR e leitura de PDF carregam bibliotecas externas por CDN e podem exigir conexão com a internet na primeira utilização.
+- A detecção de duplicidade é heurística e sempre deve ser revisada; não é uma integração bancária oficial.
 - A versão inicial é um protótipo funcional; valide os cálculos e mantenha backups.
+
+## Leitura de documentos
+- Em Adicionar, use **Ler cupom fiscal** para foto ou PDF de cupom.
+- Use **Ler fatura/extrato PDF** para tentar extrair lançamentos de um PDF bancário.
+- Revise e corrija os campos antes de confirmar. OCR pode errar nomes, datas, valores e sinal de crédito/débito.
+- PDFs protegidos por senha ou com layout incomum podem não ser reconhecidos.
 
 ## Como usar
 1. Extraia o ZIP.
@@ -34,3 +42,14 @@ Os dados financeiros são guardados no `localStorage` deste navegador. Limpar da
 - Crie um repositório e envie `index.html`, `manifest.json`, `sw.js` e `icon.svg` para a raiz.
 - Em Settings → Pages, escolha a branch principal e a pasta `/ (root)`.
 - Aguarde a publicação e abra a URL HTTPS no Safari.
+
+
+## Mesclagem inteligente de backups (V3)
+
+- A importação não substitui os dados locais: mescla os registros do backup com os registros já existentes.
+- Cada lançamento com ID já presente é ignorado, evitando repetir dados quando o mesmo backup circula entre os dois dispositivos.
+- Categorias são reconciliadas pelo nome normalizado; cartões podem ser reconhecidos pelo nome e titular.
+- Gastos, rendas, parcelas e contas são comparados por data/competência, valor e descrição para apontar possíveis duplicidades.
+- Possíveis duplicidades aparecem em uma revisão. Por padrão, são ignoradas; o usuário pode marcar uma linha para importar também se forem dois lançamentos legítimos.
+- Os nomes das duas pessoas configurados localmente são preservados durante a mesclagem.
+- O algoritmo é heurístico: descrições diferentes para a mesma compra podem escapar, e compras legítimas iguais podem ser sinalizadas. Revise a lista antes de confirmar.

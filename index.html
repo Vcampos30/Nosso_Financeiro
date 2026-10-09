@@ -27,7 +27,7 @@
 
   <main>
     <section id="page-home" class="page active">
-      <div class="heading"><div><h2>Visão geral</h2><p>Um retrato simples das finanças do casal.</p></div><button class="btn" onclick="openExpense()">＋ Novo gasto</button></div>
+      <div class="heading"><div><h2>Visão geral</h2><p>Um retrato simples das finanças do casal.</p></div><div class="inline-actions"><button class="btn secondary" onclick="openIncome()">＋ Inserir renda</button><button class="btn" onclick="openExpense()">＋ Novo gasto</button></div></div>
       <div class="notice"><strong>Modo local ativado</strong>Os dados ficam neste navegador. Para usar em outro iPhone, exporte um backup e importe no outro dispositivo. Não há sincronização automática nesta versão.</div>
       <div class="cards">
         <div class="card"><div class="metric-label">↗ Renda familiar</div><div class="metric" id="metric-income">R$ 0,00</div><div class="metric-sub" id="income-sub">Renda cadastrada no mês</div></div>
@@ -65,9 +65,14 @@
         <div class="panel">
           <h3>Importar documentos</h3>
           <p class="small-muted">Nesta versão, os lançamentos são manuais. A leitura automática de cupom fiscal e PDF será adicionada depois.</p>
-          <label class="btn ghost file-label" for="documentInput">Selecionar cupom ou fatura</label>
-          <input class="hidden" type="file" id="documentInput" accept="image/*,.pdf">
-          <p id="selected-file" class="small-muted"></p>
+          <div class="inline-actions">
+            <label class="btn ghost file-label" for="receiptInput">📷 Ler cupom fiscal</label>
+            <label class="btn ghost file-label" for="statementInput">📄 Ler fatura/extrato PDF</label>
+          </div>
+          <input class="hidden" type="file" id="receiptInput" accept="image/*,.pdf">
+          <input class="hidden" type="file" id="statementInput" accept=".pdf,application/pdf">
+          <p id="selected-file" class="small-muted">Cupom: extração de itens e total. PDF: extração de lançamentos para revisão.</p>
+          <div id="ocr-progress" class="hidden section-gap"><div class="progress"><span id="ocr-progress-bar" style="width:0%"></span></div><p id="ocr-progress-text" class="small-muted">Preparando leitura…</p></div>
         </div>
       </div>
       <div class="panel section-gap"><h3>Cadastros rápidos</h3><div class="inline-actions"><button class="btn ghost" onclick="openCategory()">＋ Categoria</button><button class="btn ghost" onclick="openBill()">＋ Conta recorrente</button><button class="btn ghost" onclick="navigate('settings')">Backup e configurações</button></div></div>
@@ -101,7 +106,7 @@
       <div class="panel section-gap"><div class="panel-head"><h3>Categorias</h3><button class="btn secondary small" onclick="openCategory()">＋ Nova</button></div><div id="category-settings"></div></div>
       <div class="panel section-gap"><h3>Backup e exportação</h3><p class="small-muted">Guarde uma cópia regularmente. Um backup contém informações financeiras e deve ser mantido em local privado.</p>
         <div class="inline-actions"><button class="btn" onclick="exportBackup()">Exportar backup JSON</button><button class="btn ghost" onclick="exportCSV()">Exportar gastos CSV</button><label class="btn ghost file-label" for="backupInput">Importar backup</label><input id="backupInput" type="file" class="hidden" accept=".json,application/json"></div>
-        <p class="small-muted" style="margin-top:12px">Para compartilhar pelo iCloud Drive: exporte o JSON, salve em Arquivos/iCloud Drive e abra esse arquivo no outro dispositivo para importá-lo aqui. Importar um backup substitui os dados locais atuais.</p>
+        <p class="small-muted" style="margin-top:12px">Para compartilhar pelo iCloud Drive: exporte o JSON, salve em Arquivos/iCloud Drive e importe no outro dispositivo. A importação agora mescla os dados, preserva os registros locais e sinaliza possíveis duplicidades para revisão — não substitui tudo automaticamente.</p>
       </div>
       <div class="panel section-gap"><h3>Privacidade e armazenamento</h3><p class="small-muted">Os dados deste aplicativo são guardados no armazenamento local do navegador. Limpar os dados do navegador ou remover o site pode apagar os registros. Exporte backups com frequência. Não armazene senhas bancárias nem números completos de cartões.</p><div class="form-actions"><button class="btn danger" onclick="resetAll()">Apagar todos os dados locais</button></div></div>
     </section>
@@ -121,6 +126,8 @@
 </div>
 <div id="toast" class="toast hidden" role="status"></div>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 <script>
 const STORE_KEY='nossoFinanceiro.v1';
 const COLORS=['#2c6a51','#d4a14e','#6588b4','#a084bd','#d47f68','#6c9b98','#9ba56a','#9299a3'];
@@ -242,15 +249,316 @@ function editCategory(id){openCategory(id)}
 function toggleCategory(id){const c=cat(id);if(c){c.active=!c.active;persist();toast(c.active?'Categoria ativada.':'Categoria desativada.');}}
 function setBillTab(t){billTab=t;renderBills()}
 function savePeople(){const a=document.getElementById('person1').value.trim()||'Você',b=document.getElementById('person2').value.trim()||'Esposa';state.people=[a,b];persist();toast('Nomes atualizados.')}
-function exportBackup(){const blob=new Blob([JSON.stringify({...state,exportedAt:new Date().toISOString()},null,2)],{type:'application/json'});downloadBlob(blob,`nosso-financeiro-backup-${today()}.json`);toast('Backup exportado.')}
+function exportBackup(){const snapshot=JSON.parse(JSON.stringify(state));ensureRecordIds(snapshot);const blob=new Blob([JSON.stringify({...snapshot,backupFormat:'nosso-financeiro-merge-v2',exportedAt:new Date().toISOString()},null,2)],{type:'application/json'});downloadBlob(blob,`nosso-financeiro-backup-${today()}.json`);toast('Backup exportado com IDs para mesclagem.')}
 function exportCSV(){const rows=[['data','descricao','valor_centavos','categoria','responsavel','pagamento','observacao'],...state.expenses.map(e=>[e.date,e.description,e.amount,cat(e.categoryId)?.name||'',personName(e.person),e.payment||'',e.note||''])];const csv=rows.map(r=>r.map(v=>`"${String(v??'').replace(/"/g,'""')}"`).join(';')).join('\r\n');downloadBlob(new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8'}),`gastos-${today()}.csv`);toast('CSV exportado.')}
 function downloadBlob(blob,name){const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1500)}
-document.getElementById('backupInput').addEventListener('change',async ev=>{const f=ev.target.files[0];if(!f)return;try{const obj=JSON.parse(await f.text());if(obj.version!==1||!Array.isArray(obj.expenses)||!Array.isArray(obj.categories))throw new Error('Formato de backup inválido.');if(!confirm('Importar este backup substituirá todos os dados atuais deste navegador. Continuar?'))return;state={...freshState(),...obj};delete state.exportedAt;persist();toast('Backup importado com sucesso.');}catch(e){alert('Não foi possível importar o backup. Verifique se é um arquivo JSON válido do Nosso Financeiro.');}finally{ev.target.value=''}});
+let pendingBackupMerge = null;
+
+function normKey(value){
+ return String(value??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();
+}
+function duplicateFingerprint(type, x){
+ if(type==='expenses') return [x.date,Number(x.amount)||0,normKey(x.description),x.person||''].join('|');
+ if(type==='incomes') return [x.month,Number(x.amount)||0,normKey(x.description),x.person||''].join('|');
+ if(type==='installments') return [x.month,Number(x.amount)||0,normKey(x.description),x.current||'',x.total||''].join('|');
+ if(type==='bills') return [x.nextDue,Number(x.amount)||0,normKey(x.name),x.person||''].join('|');
+ return '';
+}
+function ensureRecordIds(obj){
+ const types=['expenses','incomes','cards','bills','installments','categories'];
+ types.forEach(type=>{if(Array.isArray(obj[type]))obj[type].forEach(x=>{if(!x.id)x.id=uid()})});
+ if(!Array.isArray(obj.expenses))obj.expenses=[];
+ if(!Array.isArray(obj.incomes))obj.incomes=[];
+ if(!Array.isArray(obj.cards))obj.cards=[];
+ if(!Array.isArray(obj.bills))obj.bills=[];
+ if(!Array.isArray(obj.installments))obj.installments=[];
+ if(!Array.isArray(obj.categories))obj.categories=[];
+}
+function findExactOrLikelyDuplicate(type, record, existing){
+ if(record.id && existing.some(x=>x.id===record.id)) return {kind:'id',record:existing.find(x=>x.id===record.id)};
+ const fp=duplicateFingerprint(type,record);
+ if(!fp || fp.split('|').filter(Boolean).length<3)return null;
+ const match=existing.find(x=>duplicateFingerprint(type,x)===fp);
+ return match?{kind:'likely',record:match}:null;
+}
+function openBackupMerge(obj,fileName){
+ ensureRecordIds(obj);
+ const groups=['expenses','incomes','installments','bills'];
+ const possible=[];
+ groups.forEach(type=>(obj[type]||[]).forEach((record,index)=>{
+   const found=findExactOrLikelyDuplicate(type,record,state[type]||[]);
+   if(found?.kind==='likely')possible.push({type,index,record,existing:found.record});
+ }));
+ pendingBackupMerge={obj,fileName,possible};
+ const totals=groups.map(type=>`<div class="mini-stat"><span>${({expenses:'Gastos',incomes:'Rendas',installments:'Parcelas',bills:'Contas recorrentes'})[type]}</span><b>${(obj[type]||[]).length}</b></div>`).join('');
+ const duplicateRows=possible.length?possible.map((d,i)=>`<label style="display:flex;gap:9px;align-items:flex-start;padding:10px 0;border-top:1px solid var(--line);font-size:12px"><input type="checkbox" data-merge-keep="${i}" style="margin-top:3px"><span><b>${safe(d.record.description||d.record.name||'Lançamento')}</b><br>${safe(d.type==='incomes'?'Renda':d.type==='installments'?'Parcela':d.type==='bills'?'Conta':'Gasto')} · ${safe(d.record.date||d.record.month||d.record.nextDue||'Sem data')} · ${money(d.record.amount||0)}<br><span class="small-muted">Já existe localmente: ${safe(d.existing.description||d.existing.name||'Lançamento')} · ${safe(d.existing.date||d.existing.month||d.existing.nextDue||'Sem data')}</span><br><span class="small-muted">Marque para importar também; por padrão, a possível duplicata será ignorada.</span></span></label>`).join(''):'<p class="small-muted">Nenhuma possível duplicidade por data, valor e descrição foi encontrada. Ainda assim, os IDs serão comparados para evitar repetir registros já compartilhados.</p>';
+ openModal('Mesclar backup',`<div class="notice"><strong>Seus dados locais serão preservados</strong>O aplicativo adicionará novos registros, reconhecerá IDs já importados e tentará mapear categorias pelo nome. Possíveis duplicidades são sugestões: confira antes de concluir.</div><div class="panel" style="padding:12px;margin-bottom:12px"><b>Resumo do arquivo</b>${totals}</div>${possible.length?`<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px"><b>${possible.length} possível(is) duplicidade(s)</b><button type="button" class="btn ghost small" onclick="toggleBackupDuplicates()">Marcar todas</button></div><div style="max-height:35vh;overflow:auto">${duplicateRows}</div>`:duplicateRows}<div class="form-actions"><button type="button" class="btn ghost" onclick="closeModal()">Cancelar</button><button type="button" class="btn" onclick="applyBackupMerge()">Mesclar backup</button></div>`);
+}
+function toggleBackupDuplicates(){
+ const checks=[...document.querySelectorAll('[data-merge-keep]')],all=checks.every(x=>x.checked);
+ checks.forEach(x=>x.checked=!all);
+}
+function applyBackupMerge(){
+ if(!pendingBackupMerge)return;
+ const {obj,possible}=pendingBackupMerge;
+ const keepLikely=new Set([...document.querySelectorAll('[data-merge-keep]')].filter(x=>x.checked).map(x=>Number(x.dataset.mergeKeep)));
+ let added=0,skipped=0,likelySkipped=0;
+ // Categories are matched by normalized name, because fresh local installs have different category IDs.
+ const categoryMap={};
+ (obj.categories||[]).forEach(incoming=>{
+   let existing=state.categories.find(c=>normKey(c.name)===normKey(incoming.name));
+   if(existing){categoryMap[incoming.id]=existing.id;return}
+   const copy={...incoming};
+   if(state.categories.some(c=>c.id===copy.id))copy.id=uid();
+   state.categories.push(copy);categoryMap[incoming.id]=copy.id;added++;
+ });
+ // Cards: match by ID first, then by name + owner to handle independent local setup.
+ const cardMap={};
+ (obj.cards||[]).forEach(incoming=>{
+   let existing=state.cards.find(c=>c.id===incoming.id)||state.cards.find(c=>normKey(c.name)===normKey(incoming.name)&&c.person===incoming.person);
+   if(existing){cardMap[incoming.id]=existing.id;return}
+   const copy={...incoming};if(state.cards.some(c=>c.id===copy.id))copy.id=uid();
+   state.cards.push(copy);cardMap[incoming.id]=copy.id;added++;
+ });
+ // Keep the local people names and settings; p1/p2 are stable roles across backups.
+ const arrays=['expenses','incomes','installments','bills'];
+ const skipKeys=new Set(possible.filter((d,i)=>!keepLikely.has(i)).map(d=>`${d.type}:${d.index}`));
+ arrays.forEach(type=>{
+   const current=state[type]||(state[type]=[]);
+   (obj[type]||[]).forEach((incoming,index)=>{
+     if(skipKeys.has(`${type}:${index}`)){skipped++;likelySkipped++;return}
+     if(incoming.id&&current.some(x=>x.id===incoming.id)){skipped++;return}
+     const found=findExactOrLikelyDuplicate(type,incoming,current);
+     if(found?.kind==='likely'&&!skipKeys.has(`${type}:${index}`)){
+       // Explicitly checked means user chose to keep both.
+     } else if(found?.kind==='id'){skipped++;return}
+     const copy={...incoming};
+     if(current.some(x=>x.id===copy.id))copy.id=uid();
+     if(copy.categoryId&&categoryMap[copy.categoryId])copy.categoryId=categoryMap[copy.categoryId];
+     if(Array.isArray(copy.items))copy.items=copy.items.map(it=>({...it,categoryId:categoryMap[it.categoryId]||it.categoryId}));
+     if(copy.cardId&&cardMap[copy.cardId])copy.cardId=cardMap[copy.cardId];
+     current.push(copy);added++;
+   });
+ });
+ // Preserve metadata for future diagnostics without importing the source's export timestamp as app state.
+ state.version=1;
+ state.lastBackupMergeAt=new Date().toISOString();
+ state.lastMergedBackupName=pendingBackupMerge.fileName||'backup.json';
+ pendingBackupMerge=null;
+ closeModal();persist();
+ toast(`Mesclagem concluída: ${added} registro(s) adicionado(s), ${skipped} ignorado(s).`);
+}
+document.getElementById('backupInput').addEventListener('change',async ev=>{
+ const f=ev.target.files[0];if(!f)return;
+ try{
+   const obj=JSON.parse(await f.text());
+   if(obj.version!==1||!Array.isArray(obj.expenses)||!Array.isArray(obj.categories))throw new Error('Formato de backup inválido.');
+   openBackupMerge(obj,f.name);
+ }catch(e){console.error(e);alert('Não foi possível abrir o backup. Verifique se é um JSON válido do Nosso Financeiro.');}
+ finally{ev.target.value=''}
+});
 function resetAll(){if(!confirm('Tem certeza? Todos os dados locais serão apagados permanentemente se não houver backup.'))return;if(!confirm('Última confirmação: deseja apagar gastos, rendas, cartões, contas e categorias personalizadas?'))return;state=freshState();persist();toast('Dados locais apagados.')}
 document.getElementById('monthPicker').value=monthNow();document.getElementById('monthPicker').addEventListener('change',renderAll);
 document.getElementById('expense-search').addEventListener('input',renderExpenses);document.getElementById('expense-category-filter').addEventListener('change',renderExpenses);document.getElementById('expense-person-filter').addEventListener('change',renderExpenses);
 document.getElementById('person1').value=state.people[0];document.getElementById('person2').value=state.people[1];
-document.getElementById('documentInput').addEventListener('change',e=>{const f=e.target.files[0];if(!f)return;setText('selected-file',`Arquivo selecionado: ${f.name}. A leitura automática será adicionada em uma próxima versão.`);toast('Arquivo selecionado; OCR ainda não está disponível.');});
+document.getElementById('receiptInput').addEventListener('change',async e=>{const f=e.target.files[0];if(!f)return;try{await importReceiptFile(f)}catch(err){console.error(err);alert('Não foi possível ler o cupom. Confira a qualidade da imagem ou tente um PDF com texto selecionável.');}finally{e.target.value='';hideOCRProgress();}});
+document.getElementById('statementInput').addEventListener('change',async e=>{const f=e.target.files[0];if(!f)return;try{await importStatementPDF(f)}catch(err){console.error(err);alert('Não foi possível extrair os lançamentos deste PDF. Alguns bancos usam PDFs protegidos ou formatos que precisam de ajustes.');}finally{e.target.value='';hideOCRProgress();}});
+
+function showOCRProgress(text,percent=0){
+ const box=document.getElementById('ocr-progress');box.classList.remove('hidden');
+ setText('ocr-progress-text',text);document.getElementById('ocr-progress-bar').style.width=Math.max(0,Math.min(100,percent))+'%';
+}
+function hideOCRProgress(){document.getElementById('ocr-progress')?.classList.add('hidden')}
+function brlToCents(s){
+ if(s===null||s===undefined)return 0;
+ let v=String(s).replace(/[^\d,.-]/g,'').trim();
+ if(v.includes(','))v=v.replace(/\./g,'').replace(',','.');
+ const n=Number(v);return Number.isFinite(n)?Math.round(n*100):0;
+}
+function extractMoneyTokens(line){
+ const re=/(?:R\$\s*)?-?\d{1,3}(?:\.\d{3})*,\d{2}|(?:R\$\s*)?-?\d+,\d{2}/g;
+ return [...String(line).matchAll(re)].map(m=>({text:m[0],value:brlToCents(m[0]),index:m.index}));
+}
+function findReceiptTotal(text){
+ const lines=text.split(/\r?\n/).map(x=>x.trim()).filter(Boolean);
+ const patterns=[/total\s*(?:a pagar|do cupom|da compra|geral)?/i,/valor\s*(?:total|pago)/i,/total\s*r?\$?/i,/vl\.?\s*total/i];
+ for(let i=lines.length-1;i>=0;i--){
+   if(patterns.some(p=>p.test(lines[i]))){const ms=extractMoneyTokens(lines[i]);if(ms.length)return ms[ms.length-1].value;
+     if(lines[i+1]){const next=extractMoneyTokens(lines[i+1]);if(next.length)return next[next.length-1].value;}}
+ }
+ const all=lines.flatMap(extractMoneyTokens);return all.length?all[all.length-1].value:0;
+}
+function detectReceiptDate(text){
+ let m=text.match(/\b(\d{2})[\/.-](\d{2})[\/.-](\d{4})\b/);if(!m)return today();
+ const d=`${m[3]}-${m[2]}-${m[1]}`;return d;
+}
+function detectMerchant(text,filename){
+ const lines=text.split(/\r?\n/).map(s=>s.trim()).filter(s=>s.length>2);
+ const skip=/CNPJ|CPF|IE:|INSCRI|CUPOM|DANFE|CONSUMIDOR|DOCUMENTO AUXILIAR|SAT|NFC.?E|EXTRATO|PAGAMENTO/i;
+ return lines.find(s=>/[A-Za-zÀ-ÿ]/.test(s)&&!skip.test(s)&&s.length<70)?.slice(0,70)||filename.replace(/\.[^.]+$/,'');
+}
+function inferCategoryId(description){
+ const d=String(description).toLowerCase();
+ const rules=[
+  [/arroz|feij|carne|frango|leite|p[aã]o|queijo|iogurte|fruta|legume|verdura|macarr[aã]o|biscoito|bolacha|caf[eé]|a[cç][uú]car|[oó]leo|suco|refrigerante|mercado|supermercado|hortifruti|padaria/,'Alimentação'],
+  [/detergente|sab[aã]o|amaciante|desinfetante|esponja|água sanit[aá]ria|limpador|multiuso|saco de lixo|sab[aã]o em p[oó]/,'Limpeza'],
+  [/shampoo|condicionador|desodorante|creme dental|escova dental|sabonete|papel higi[eê]nico|absorvente|fralda|higiene/,'Higiene pessoal'],
+  [/farm[aá]cia|medicamento|rem[eé]dio|analg[eé]sico|vitamina|dipirona|paracetamol/,'Medicamentos e saúde'],
+  [/gasolina|etanol|combust[ií]vel|estacionamento|uber|99 pop|ped[aá]gio|transporte/,'Transporte'],
+  [/energia|eletricidade|sabesp|sanasa|água|internet|telefone|condom[ií]nio|g[aá]s encanado/,'Moradia e consumo']
+ ];
+ for(const [re,name] of rules){if(re.test(d)){const c=state.categories.find(x=>x.name===name&&x.active);if(c)return c.id;}}
+ return state.categories.find(x=>x.name==='Outros'&&x.active)?.id||state.categories[0]?.id||'';
+}
+async function loadPDFText(file,allowOCR=true){
+ if(!window.pdfjsLib)throw new Error('Biblioteca PDF.js indisponível. Verifique a conexão com a internet.');
+ pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+ const data=new Uint8Array(await file.arrayBuffer());
+ const pdf=await pdfjsLib.getDocument({data}).promise;
+ let text='', pages=[];
+ for(let p=1;p<=pdf.numPages;p++){
+   showOCRProgress(`Lendo texto do PDF: página ${p} de ${pdf.numPages}`,Math.round((p/pdf.numPages)*35));
+   const page=await pdf.getPage(p),content=await page.getTextContent();
+   const lines=[];let lastY=null,line='';
+   for(const item of content.items){
+     const y=item.transform?.[5];
+     if(lastY!==null&&Math.abs(y-lastY)>3){lines.push(line);line='';}
+     line+=(item.str||'')+' ';lastY=y;
+   }
+   if(line.trim())lines.push(line);
+   const pageText=lines.join('\n');pages.push({page,text:pageText});text+=pageText+'\n';
+ }
+ if(text.replace(/\s/g,'').length>80)return {text,pdf,pages,scanned:false};
+ if(!allowOCR) return {text,pdf,pages,scanned:true};
+ if(!window.Tesseract)throw new Error('OCR indisponível. Verifique a conexão com a internet.');
+ let ocrText='';
+ for(let p=1;p<=pdf.numPages;p++){
+   showOCRProgress(`PDF digitalizado: reconhecendo página ${p} de ${pdf.numPages}`,35+Math.round(p/pdf.numPages*60));
+   const page=await pdf.getPage(p),viewport=page.getViewport({scale:1.6}),canvas=document.createElement('canvas');
+   canvas.width=viewport.width;canvas.height=viewport.height;
+   await page.render({canvasContext:canvas.getContext('2d'),viewport}).promise;
+   const result=await Tesseract.recognize(canvas,'por+eng',{logger:m=>{if(m.status==='recognizing text')showOCRProgress(`Reconhecendo texto: ${Math.round(m.progress*100)}%`,35+Math.round(p/pdf.numPages*60));}});
+   ocrText+=result.data.text+'\n';
+ }
+ return {text:ocrText,pdf,pages,scanned:true};
+}
+async function recognizeImage(file){
+ if(!window.Tesseract)throw new Error('OCR indisponível. Verifique a conexão com a internet.');
+ const result=await Tesseract.recognize(file,'por+eng',{logger:m=>{if(m.status==='recognizing text')showOCRProgress(`Reconhecendo cupom: ${Math.round(m.progress*100)}%`,Math.round(m.progress*100));}});
+ return result.data.text||'';
+}
+function parseReceiptItems(text,totalCents){
+ const lines=text.split(/\r?\n/).map(x=>x.trim()).filter(Boolean),items=[];
+ const skip=/CNPJ|CPF|INSCRI|CUPOM|DANFE|CONSUMIDOR|DOCUMENTO AUXILIAR|NFC.?E|SAT|TRIBUT|ICMS|CHAVE|PROTOCOLO|TOTAL|DESCONTO|ACRÉSCIMO|FORMA DE PAGAMENTO|VALOR PAGO|TROCO|CART[AÃ]O|DINHEIRO|PIX|OBRIGADO|CONSULTE|WWW\.|QRCODE/i;
+ for(const line of lines){
+   if(skip.test(line)||line.length<4)continue;
+   const tokens=extractMoneyTokens(line);if(!tokens.length)continue;
+   const last=tokens[tokens.length-1],before=line.slice(0,last.index).replace(/^\s*[\d*]+\s*/,'').replace(/\s+\d+[,.]\d{2}\s*(?:x|X)?\s*$/,'').trim();
+   let desc=before.replace(/^[\d]+\s+/,'').replace(/[|*_]+/g,' ').trim();
+   if(desc.length<2||!/[\p{L}]/u.test(desc))continue;
+   let amount=last.value;
+   if(amount<=0||amount>100000000)continue;
+   // If line contains quantity and unit price, use the last monetary value as line total.
+   items.push({id:uid(),description:desc.slice(0,100),amount,categoryId:inferCategoryId(desc)});
+ }
+ // Remove likely duplicates caused by OCR line wrapping.
+ const seen=new Set();return items.filter(it=>{const k=it.description.toLowerCase()+'|'+it.amount;if(seen.has(k))return false;seen.add(k);return true;}).slice(0,100);
+}
+function receiptReviewModal(file,text){
+ const total=findReceiptTotal(text),merchant=detectMerchant(text,file.name),date=detectReceiptDate(text);
+ let items=parseReceiptItems(text,total);
+ if(!items.length)items=[{id:uid(),description:'Compra no cupom',amount:total||0,categoryId:inferCategoryId(merchant)}];
+ window.__receiptDraft={fileName:file.name,text,merchant,date,total:total||items.reduce((a,x)=>a+x.amount,0),items};
+ const catOpts=selected=>state.categories.filter(c=>c.active).map(c=>`<option value="${c.id}" ${c.id===selected?'selected':''}>${safe(c.name)}</option>`).join('');
+ openModal('Revisar cupom fiscal',`<div class="notice"><strong>Confira antes de salvar</strong>O reconhecimento pode errar nomes, quantidades e valores. Edite os itens e o total quando necessário.</div>
+ <form onsubmit="saveReceiptReview(event)"><div class="form-grid">
+ <div class="field"><label>Estabelecimento</label><input name="merchant" required value="${safe(merchant)}"></div>
+ <div class="field"><label>Data da compra</label><input name="date" type="date" required value="${date}"></div>
+ <div class="field"><label>Total do cupom (R$)</label><input name="total" type="number" min="0" step=".01" required value="${(window.__receiptDraft.total/100).toFixed(2)}"></div>
+ <div class="field"><label>Responsável</label>${personSelect('p1')}</div>
+ <div class="field"><label>Forma de pagamento</label>${paymentSelect('Cartão de crédito')}</div>
+ <div class="field"><label>Cartão (se aplicável)</label><select name="cardId">${cardOptions('')}</select></div>
+ </div><h4 style="margin:20px 0 8px">Itens reconhecidos (${items.length})</h4>
+ <div id="receipt-items-editor">${items.map((it,i)=>`<div class="panel" style="padding:12px;margin:8px 0"><div class="form-grid"><div class="field full"><label>Produto ${i+1}</label><input data-item-desc="${i}" value="${safe(it.description)}" required></div><div class="field"><label>Valor do item (R$)</label><input data-item-amount="${i}" type="number" min="0" step=".01" value="${(it.amount/100).toFixed(2)}" required></div><div class="field"><label>Categoria</label><select data-item-category="${i}">${catOpts(it.categoryId)}</select></div></div></div>`).join('')}</div>
+ <div class="form-actions"><button type="button" class="btn ghost" onclick="closeModal()">Cancelar</button><button class="btn">Salvar compra</button></div></form>`);
+}
+async function importReceiptFile(file){
+ showOCRProgress('Preparando cupom…',5);setText('selected-file',`Lendo: ${file.name}`);
+ let text='';
+ if(file.type==='application/pdf'||file.name.toLowerCase().endsWith('.pdf')){
+   const result=await loadPDFText(file,true);text=result.text;
+ }else text=await recognizeImage(file);
+ showOCRProgress('Interpretando itens e total…',98);
+ if(!text.trim())throw new Error('Nenhum texto reconhecido');
+ receiptReviewModal(file,text);hideOCRProgress();
+}
+function parseStatementLines(text){
+ const out=[],lines=text.split(/\r?\n/).map(x=>x.replace(/\s+/g,' ').trim()).filter(Boolean);
+ const dateRe=/\b(\d{2})[\/.-](\d{2})(?:[\/.-](\d{2,4}))?\b/;
+ const amountRe=/-?\s*(?:R\$\s*)?-?\d{1,3}(?:\.\d{3})*,\d{2}|-?\s*(?:R\$\s*)?-?\d+,\d{2}/g;
+ for(const line of lines){
+   if(/saldo anterior|saldo final|saldo disponível|limite total|pagamento mínimo|total da fatura|total a pagar|vencimento|lançamentos nacionais|descrição\s+valor/i.test(line))continue;
+   const dm=line.match(dateRe),ms=[...line.matchAll(amountRe)];
+   if(!dm||!ms.length)continue;
+   const token=ms[ms.length-1][0],amount=brlToCents(token);
+   if(!amount)continue;
+   let description=line.replace(dm[0],'').replace(token,'').replace(/\b(parcela\s*)?\d{1,2}\s*\/\s*\d{1,2}\b/i,'').replace(/\s{2,}/g,' ').trim();
+   description=description.replace(/^[-–—:| ]+|[-–—:| ]+$/g,'');
+   if(description.length<2||/CNPJ|CPF|AGÊNCIA|CONTA CORRENTE/i.test(description))continue;
+   let year=dm[3]?Number(dm[3]):Number(selectedMonth().slice(0,4));if(year<100)year+=2000;
+   const date=`${year}-${dm[2]}-${dm[1]}`;
+   out.push({id:uid(),description:description.slice(0,120),date,amount,categoryId:inferCategoryId(description),selected:true});
+ }
+ const seen=new Set();return out.filter(x=>{const k=x.date+'|'+x.description.toLowerCase()+'|'+x.amount;if(seen.has(k))return false;seen.add(k);return true;}).slice(0,250);
+}
+async function importStatementPDF(file){
+ showOCRProgress('Abrindo PDF…',5);const result=await loadPDFText(file,true);
+ const entries=parseStatementLines(result.text);
+ if(!entries.length){hideOCRProgress();openModal('PDF sem lançamentos reconhecidos',`<p>Não consegui identificar linhas de transação automaticamente neste documento.</p><p class="small-muted">Isso pode acontecer quando o PDF usa um formato de banco ainda não reconhecido. Tente um PDF com texto selecionável ou cadastre as despesas manualmente.</p><div class="form-actions"><button class="btn" onclick="closeModal()">Entendi</button></div>`);return}
+ statementReviewModal(file,entries);
+}
+function statementReviewModal(file,entries){
+ const duplicateIds=new Set();
+ entries.forEach(x=>{if(state.expenses.some(e=>e.date===x.date&&e.amount===x.amount&&e.status!=='cancelled'&&e.description.toLowerCase().includes(x.description.toLowerCase().slice(0,Math.min(12,x.description.length)))))duplicateIds.add(x.id)});
+ entries.forEach(x=>{if(duplicateIds.has(x.id))x.selected=false});
+ window.__statementDraft={fileName:file.name,entries};
+ openModal('Revisar fatura / extrato',`<div class="notice"><strong>Confira os lançamentos reconhecidos</strong>As linhas marcadas como possíveis duplicatas começam desmarcadas. O formato dos PDFs varia por banco; confira datas e sinais dos valores.</div>
+ <div class="form-grid"><div class="field"><label>Responsável padrão</label>${personSelect('p1')}</div><div class="field"><label>Forma de pagamento padrão</label>${paymentSelect('Cartão de crédito')}</div><div class="field"><label>Cartão (se aplicável)</label><select name="cardId" form="statement-form">${cardOptions('')}</select></div></div>
+ <form id="statement-form" onsubmit="saveStatementReview(event)"><div style="margin-top:14px;display:flex;justify-content:space-between;align-items:center"><b>${entries.length} lançamento(s)</b><button type="button" class="btn ghost small" onclick="toggleAllStatementRows()">Marcar/desmarcar todos</button></div>
+ <div style="overflow:auto;max-height:46vh;margin-top:8px"><table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr><th style="text-align:left;padding:8px 4px">Importar</th><th style="text-align:left;padding:8px 4px">Data / descrição</th><th style="text-align:left;padding:8px 4px">Valor</th><th style="text-align:left;padding:8px 4px">Categoria</th></tr></thead><tbody>
+ ${entries.map((x,i)=>`<tr style="border-top:1px solid var(--line)"><td style="padding:8px 4px"><input type="checkbox" data-statement-check="${i}" ${x.selected?'checked':''}></td><td style="padding:8px 4px;min-width:160px"><input data-statement-date="${i}" type="date" value="${x.date}" style="width:135px;padding:6px;border:1px solid var(--line);border-radius:7px"><input data-statement-desc="${i}" value="${safe(x.description)}" style="width:100%;margin-top:5px;padding:6px;border:1px solid var(--line);border-radius:7px"></td><td style="padding:8px 4px;min-width:100px"><input data-statement-amount="${i}" type="number" step=".01" value="${(x.amount/100).toFixed(2)}" style="width:100px;padding:6px;border:1px solid var(--line);border-radius:7px"></td><td style="padding:8px 4px;min-width:135px"><select data-statement-cat="${i}" style="max-width:150px;padding:6px;border:1px solid var(--line);border-radius:7px">${state.categories.filter(c=>c.active).map(c=>`<option value="${c.id}" ${c.id===x.categoryId?'selected':''}>${safe(c.name)}</option>`).join('')}</select>${duplicateIds.has(x.id)?'<small style="display:block;color:#9a6b1d">Possível duplicata</small>':''}</td></tr>`).join('')}
+ </tbody></table></div><div class="form-actions"><button type="button" class="btn ghost" onclick="closeModal()">Cancelar</button><button class="btn">Importar selecionados</button></div></form>`);
+ // Save defaults outside the form in state while the modal is open.
+ window.__statementDefaults={person:'p1',payment:'Cartão de crédito',cardId:''};
+ const modal=document.getElementById('modal-content');
+ modal.querySelector('select[name="person"]')?.addEventListener('change',e=>window.__statementDefaults.person=e.target.value);
+ modal.querySelector('select[name="payment"]')?.addEventListener('change',e=>window.__statementDefaults.payment=e.target.value);
+ modal.querySelector('select[name="cardId"]')?.addEventListener('change',e=>window.__statementDefaults.cardId=e.target.value);
+}
+function toggleAllStatementRows(){const checks=[...document.querySelectorAll('[data-statement-check]')],all=checks.every(x=>x.checked);checks.forEach(x=>x.checked=!all)}
+function saveStatementReview(ev){
+ ev.preventDefault();const entries=window.__statementDraft?.entries||[],defs=window.__statementDefaults||{person:'p1',payment:'Cartão de crédito',cardId:''};let saved=0,skipped=0;
+ entries.forEach((x,i)=>{
+   const check=document.querySelector(`[data-statement-check="${i}"]`);if(!check?.checked){skipped++;return}
+   const description=document.querySelector(`[data-statement-desc="${i}"]`)?.value.trim();const date=document.querySelector(`[data-statement-date="${i}"]`)?.value;const amount=cents(document.querySelector(`[data-statement-amount="${i}"]`)?.value);const categoryId=document.querySelector(`[data-statement-cat="${i}"]`)?.value;
+   if(!description||!date||amount===0)return;
+   const duplicate=state.expenses.some(e=>e.status!=='cancelled'&&e.date===date&&e.amount===amount&&e.description.toLowerCase()===description.toLowerCase());
+   if(duplicate){skipped++;return}
+   state.expenses.push({id:uid(),description,amount,date,categoryId,person:defs.person,payment:defs.payment,cardId:defs.cardId,installmentCount:1,note:`Importado de ${window.__statementDraft.fileName}`,status:'confirmed',createdAt:new Date().toISOString(),updatedAt:new Date().toISOString(),source:'statement-pdf'});saved++;
+ });
+ closeModal();persist();toast(`${saved} lançamento(s) importado(s); ${skipped} ignorado(s).`);
+}
+function saveReceiptReview(ev){
+ ev.preventDefault();const form=ev.target,d=new FormData(form),draft=window.__receiptDraft;if(!draft)return;
+ const items=draft.items.map((it,i)=>({id:uid(),description:document.querySelector(`[data-item-desc="${i}"]`)?.value.trim()||it.description,amount:cents(document.querySelector(`[data-item-amount="${i}"]`)?.value),categoryId:document.querySelector(`[data-item-category="${i}"]`)?.value||it.categoryId})).filter(it=>it.description&&it.amount>=0);
+ const total=cents(d.get('total'));if(total<=0){alert('Informe um total maior que zero.');return}
+ const date=d.get('date'),merchant=d.get('merchant').trim(),person=d.get('person'),payment=d.get('payment'),cardId=d.get('cardId');
+ const duplicate=state.expenses.find(e=>e.status!=='cancelled'&&e.date===date&&e.amount===total&&e.description.toLowerCase()===merchant.toLowerCase());
+ if(duplicate&&!confirm('Já existe um gasto com a mesma data, descrição e valor. Deseja salvar mesmo assim?'))return;
+ const expense={id:uid(),description:merchant,amount:total,date,categoryId:items[0]?.categoryId||inferCategoryId(merchant),person,payment,cardId,installmentCount:1,note:`Cupom: ${draft.fileName}`,items,status:'confirmed',source:'receipt-ocr',createdAt:new Date().toISOString(),updatedAt:new Date().toISOString()};
+ state.expenses.push(expense);closeModal();persist();toast(`Cupom salvo com ${items.length} item(ns).`);
+}
+
 function escapeInline(s){return String(s).replace(/\\/g,'\\\\').replace(/'/g,"\\'")}
 function editExpense(id){openExpense(id)}
 renderAll();
