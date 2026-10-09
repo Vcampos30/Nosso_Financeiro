@@ -78,3 +78,10 @@ Os dados financeiros são guardados no `localStorage` deste navegador. Limpar da
 - Nomes dos integrantes editáveis em **Ajustes → Quem usa o aplicativo**, com atualização dos filtros e rótulos em toda a interface.
 - A página Análises agora exibe gráficos SVG reais e responsivos: linha de saldo mensal, barras comparando renda e gastos e rosca da distribuição por categoria. Os gráficos são gerados com os lançamentos locais e não dependem de biblioteca externa.
 - A versão continua usando armazenamento local do navegador; faça backup JSON antes de substituir arquivos.
+
+
+## Versão final — período e identidade visual
+- Central de Análises abre por padrão em **Últimos 30 dias**, com opção de **Últimos 3 meses** e demais períodos históricos.
+- No recorte de 30 dias, despesas e parcelas são filtradas pela data real. Como a renda é registrada por competência mensal, a renda exibida corresponde ao mês atual; a própria tela informa essa limitação.
+- Novo ícone aprovado: símbolo minimalista de casal e crescimento financeiro em verde profundo e dourado. Atualizados o ícone do app, favicon e Apple touch icon; o restante da interface não foi alterado.
+- Cache do service worker atualizado para V7.

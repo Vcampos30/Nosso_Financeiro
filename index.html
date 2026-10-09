@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Nosso Financeiro">
 <link rel="manifest" href="manifest.json">
-<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="icon" href="icon.png" type="image/png"><link rel="apple-touch-icon" href="icon.png">
 <title>Nosso Financeiro</title>
 <style>
 :root{--bg:#f5f7f4;--surface:#fff;--ink:#1c2923;--muted:#6d7a72;--line:#e4e9e4;--green:#245c49;--green2:#e5f1e9;--gold:#d8a34d;--red:#b84c4c;--shadow:0 8px 28px rgba(25,55,39,.06);--radius:18px}
@@ -88,7 +88,7 @@
     <section id="page-analytics" class="page">
       <div class="heading"><div><h2>Central de análises</h2><p>Histórico, indicadores, composição dos gastos e projeções financeiras.</p></div></div>
       <div class="panel"><div class="filters">
-        <label class="field"><span>Período histórico</span><select id="analytics-range" onchange="renderAnalytics()"><option value="6">Últimos 6 meses</option><option value="12" selected>Últimos 12 meses</option><option value="24">Últimos 24 meses</option><option value="all">Todo o histórico</option></select></label>
+        <label class="field"><span>Período da análise</span><select id="analytics-range" onchange="renderAnalytics()"><option value="30d" selected>Últimos 30 dias</option><option value="3">Últimos 3 meses</option><option value="6">Últimos 6 meses</option><option value="12">Últimos 12 meses</option><option value="24">Últimos 24 meses</option><option value="all">Todo o histórico</option></select></label>
         <div class="small-muted" id="analytics-period-note">Os indicadores usam os lançamentos disponíveis no dispositivo.</div>
       </div></div>
       <div class="cards section-gap">
@@ -257,12 +257,14 @@ function renderCategoryDonut(entries,total){
 }
 
 function renderAnalytics(){
- const range=document.getElementById('analytics-range')?.value||'12',end=selectedMonth();
+ const range=document.getElementById('analytics-range')?.value||'30d',end=selectedMonth();
  const monthList=[...state.expenses.filter(e=>e.status!=='cancelled').map(e=>e.date?.slice(0,7)).filter(Boolean),...(state.installments||[]).filter(x=>x.status!=='cancelled').map(x=>x.month).filter(Boolean),...state.incomes.map(x=>x.month).filter(Boolean)].sort();
  const earliest=monthList[0]||end,monthDiff=(a,b)=>(Number(b.slice(0,4))-Number(a.slice(0,4)))*12+Number(b.slice(5,7))-Number(a.slice(5,7));
- const count=range==='all'?Math.max(1,monthDiff(earliest,end)+1):Number(range),months=[];
+ const count=range==='all'?Math.max(1,monthDiff(earliest,end)+1):range==='30d'?1:Number(range),months=[];
  for(let i=count-1;i>=0;i--){const d=new Date(Number(end.slice(0,4)),Number(end.slice(5,7))-1-i,1);months.push(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`)}
- const monthlyExpenses=mm=>expensesForMonth(mm).filter(e=>e.status!=='cancelled');
+ const cutoff30=new Date();cutoff30.setHours(0,0,0,0);cutoff30.setDate(cutoff30.getDate()-29);
+ const inLast30Days=e=>{if(range!=='30d')return true;const dt=e.date?new Date(`${e.date}T00:00:00`):null;return !!dt&&!Number.isNaN(dt.getTime())&&dt>=cutoff30&&dt<=new Date()};
+ const monthlyExpenses=mm=>expensesForMonth(mm).filter(e=>e.status!=='cancelled'&&inLast30Days(e));
  const expenseSum=mm=>monthlyExpenses(mm).reduce((a,e)=>a+e.amount,0),incomeSum=mm=>incomesForMonth(mm).reduce((a,x)=>a+x.amount,0);
  const rows=months.map(month=>({month,expense:expenseSum(month),income:incomeSum(month),net:incomeSum(month)-expenseSum(month)}));
  const sum=(arr,key)=>arr.reduce((a,x)=>a+(x[key]||0),0),totalExpense=sum(rows,'expense'),totalIncome=sum(rows,'income'),net=totalIncome-totalExpense;
@@ -313,7 +315,7 @@ function renderAnalytics(){
  if(flat.length<10)insights.push('Ainda há poucos lançamentos para identificar padrões com segurança. Registre os gastos regularmente para melhorar as análises.');
  if(!state.incomes.length)insights.push('Cadastre as rendas para estimar saldo, taxa de poupança e projeções com mais utilidade.');
  document.getElementById('an-insights').innerHTML=insights.map(t=>`<div class="mini-stat"><span>${safe(t)}</span></div>`).join('')||'<div class="empty">Sem alertas para o período.</div>';
- setText('analytics-period-note',`${months.length} competência(s), de ${monthLabel(months[0])} a ${monthLabel(end)}. Projeções usam somente os dados cadastrados.`);
+ setText('analytics-period-note',range==='30d'?'Despesas dos últimos 30 dias. Como as rendas são cadastradas por competência mensal, a renda considera o mês atual; projeções ficam menos confiáveis neste recorte.':`${months.length} competência(s), de ${monthLabel(months[0])} a ${monthLabel(end)}. Projeções usam somente os dados cadastrados.`);
 }
 function renderCategories(){const el=document.getElementById('category-settings');if(!el)return;el.innerHTML=state.categories.map(c=>`<div class="list-row"><div class="list-icon" style="background:${c.color}18">${safe(c.icon)}</div><div class="list-main"><strong>${safe(c.name)}</strong><small>${c.active?'Ativa':'Inativa'}</small></div><button class="btn ghost small" onclick="editCategory('${c.id}')">Editar</button><button class="btn ghost small" onclick="toggleCategory('${c.id}')">${c.active?'Desativar':'Ativar'}</button></div>`).join('')}
 function fillFilters(){
