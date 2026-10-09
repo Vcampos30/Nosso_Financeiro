@@ -53,3 +53,13 @@ Os dados financeiros são guardados no `localStorage` deste navegador. Limpar da
 - Possíveis duplicidades aparecem em uma revisão. Por padrão, são ignoradas; o usuário pode marcar uma linha para importar também se forem dois lançamentos legítimos.
 - Os nomes das duas pessoas configurados localmente são preservados durante a mesclagem.
 - O algoritmo é heurístico: descrições diferentes para a mesma compra podem escapar, e compras legítimas iguais podem ser sinalizadas. Revise a lista antes de confirmar.
+
+
+## Ajustes V4
+
+- Rendas aparecem em uma lista da competência selecionada, com ações para editar e excluir.
+- O campo de valor da renda aceita digitação livre e vírgula decimal para facilitar correções.
+- Forma de pagamento inclui "Cartão Benefício".
+- A categoria padrão "Higiene pessoal" foi renomeada para "Higiene", inclusive nos dados existentes.
+- Categorias personalizadas continuam disponíveis em Configurações > Categorias, depois das categorias padrão (incluindo "Outros").
+- Compras no cartão de crédito parceladas passam a contar nos gastos mensais como parcelas individuais, distribuídas mês a mês a partir do mês da compra. A compra integral deixa de ser somada toda na competência inicial; análises e lista mensal usam o valor de cada parcela.

@@ -40,6 +40,7 @@
         <div class="panel"><div class="panel-head"><h3>Últimos lançamentos</h3><button class="btn ghost small" onclick="navigate('expenses')">Ver todos</button></div><div id="recent-list" class="expense-list"></div></div>
       </div>
       <div class="panel section-gap"><div class="panel-head"><h3>Resumo individual</h3><span class="small-muted">No mês selecionado</span></div><div id="people-summary"></div></div>
+      <div class="panel section-gap"><div class="panel-head"><h3>Rendas cadastradas</h3><button class="btn secondary small" onclick="openIncome()">＋ Nova renda</button></div><div id="income-management"></div></div>
     </section>
 
     <section id="page-expenses" class="page">
@@ -132,7 +133,7 @@
 const STORE_KEY='nossoFinanceiro.v1';
 const COLORS=['#2c6a51','#d4a14e','#6588b4','#a084bd','#d47f68','#6c9b98','#9ba56a','#9299a3'];
 const DEFAULT_CATS=[
- ['Alimentação','🛒'],['Limpeza','🧽'],['Higiene pessoal','🧴'],['Medicamentos e saúde','💊'],['Coisinhas','🧺'],['Moradia e consumo','🏠'],['Transporte','🚗'],['Lazer','🎟️'],['Educação','📚'],['Pets','🐾'],['Outros','✳️']
+ ['Alimentação','🛒'],['Limpeza','🧽'],['Higiene','🧴'],['Medicamentos e saúde','💊'],['Coisinhas','🧺'],['Moradia e consumo','🏠'],['Transporte','🚗'],['Lazer','🎟️'],['Educação','📚'],['Pets','🐾'],['Outros','✳️']
 ];
 const today=()=>new Date().toISOString().slice(0,10);
 const monthNow=()=>today().slice(0,7);
@@ -144,16 +145,32 @@ const monthLabel=m=>{if(!m)return'';const [y,mo]=m.split('-');return new Date(Nu
 function freshState(){return {version:1,people:['Você','Esposa'],categories:DEFAULT_CATS.map((x,i)=>({id:uid(),name:x[0],icon:x[1],color:COLORS[i%COLORS.length],active:true})),expenses:[],incomes:[],cards:[],bills:[],installments:[],createdAt:new Date().toISOString()}}
 function loadState(){try{const x=JSON.parse(localStorage.getItem(STORE_KEY));if(x&&x.version===1)return x}catch(e){}return freshState()}
 let state=loadState(), billTab='bills';
+state.categories.forEach(c=>{if(c.name==='Higiene pessoal')c.name='Higiene'});
 function persist(){localStorage.setItem(STORE_KEY,JSON.stringify(state));renderAll()}
 function toast(msg){const el=document.getElementById('toast');el.textContent=msg;el.classList.remove('hidden');clearTimeout(window.__toastTimer);window.__toastTimer=setTimeout(()=>el.classList.add('hidden'),2600)}
 function selectedMonth(){return document.getElementById('monthPicker').value||monthNow()}
-function expensesForMonth(m=selectedMonth()){return state.expenses.filter(e=>e.status!=='cancelled'&&e.date?.slice(0,7)===m)}
+function expensesForMonth(m=selectedMonth()){
+ const parcelled=state.expenses.filter(e=>e.status!=='cancelled'&&e.payment==='Cartão de crédito'&&Number(e.installmentCount)>1);
+ const parcelledIds=new Set(parcelled.map(e=>e.id));
+ const regular=state.expenses.filter(e=>e.status!=='cancelled'&&!parcelledIds.has(e.id)&&e.date?.slice(0,7)===m);
+ const monthly=(state.installments||[]).filter(x=>x.status!=='cancelled'&&x.month===m).map(x=>{
+   const parent=state.expenses.find(e=>e.id===x.expenseId);
+   return {id:x.expenseId||x.id,installmentRecordId:x.id,isInstallmentLine:true,description:`${x.description||parent?.description||'Compra parcelada'} (${x.current}/${x.total})`,date:`${x.month}-01`,amount:x.amount,categoryId:x.categoryId||parent?.categoryId,person:x.person||parent?.person||'p1',payment:'Cartão de crédito',cardId:x.cardId||parent?.cardId||'',note:parent?.note||'',createdAt:parent?.createdAt||x.createdAt||''};
+ });
+ return [...regular,...monthly];
+}
 function incomesForMonth(m=selectedMonth()){return state.incomes.filter(i=>i.month===m)}
 function cat(id){return state.categories.find(c=>c.id===id)}
 function personName(v){if(v==='shared')return'Compartilhado';return state.people[v==='p2'?1:0]||v}
 function categoryOptions(selected=''){return state.categories.filter(c=>c.active||c.id===selected).map(c=>`<option value="${c.id}" ${c.id===selected?'selected':''}>${safe(c.icon)} ${safe(c.name)}</option>`).join('')}
 function cardOptions(selected=''){return `<option value="">Não se aplica</option>`+state.cards.map(c=>`<option value="${c.id}" ${c.id===selected?'selected':''}>${safe(c.name)}</option>`).join('')}
-function renderAll(){renderHome();renderExpenses();renderBills();renderAnalytics();renderCategories();fillFilters()}
+function renderAll(){renderHome();renderExpenses();renderBills();renderAnalytics();renderCategories();renderIncomes();fillFilters()}
+function renderIncomes(){
+ const el=document.getElementById('income-management');if(!el)return;
+ const arr=[...incomesForMonth()].sort((a,b)=>(a.person||'').localeCompare(b.person||'')||(a.description||'').localeCompare(b.description||''));
+ el.innerHTML=arr.length?arr.map(x=>`<div class="list-row"><div class="list-icon">↗</div><div class="list-main"><strong>${safe(x.description||'Renda')}</strong><small>${safe(personName(x.person))} · competência ${safe(monthLabel(x.month))}${x.note?' · '+safe(x.note):''}</small></div><div class="list-value">${money(x.amount)}</div><button class="btn ghost small" onclick="openIncome('${x.id}')">Editar</button><button class="btn danger small" onclick="deleteIncome('${x.id}')">Excluir</button></div>`).join(''):'<div class="empty">Nenhuma renda cadastrada nesta competência. Use “Nova renda” para inserir uma.</div>';
+}
+function deleteIncome(id){const x=state.incomes.find(i=>i.id===id);if(!x)return;if(!confirm(`Excluir a renda “${x.description||'Renda'}” de ${money(x.amount)}?`))return;state.incomes=state.incomes.filter(i=>i.id!==id);persist();toast('Renda excluída.')}
 function renderHome(){
  const m=selectedMonth(), ex=expensesForMonth(m), inc=incomesForMonth(m);
  const total=ex.reduce((a,e)=>a+e.amount,0), income=inc.reduce((a,i)=>a+i.amount,0);
@@ -168,11 +185,11 @@ function renderHome(){
  document.getElementById('recent-list').innerHTML=recent.length?recent.map(expenseRow).join(''):'<div class="empty"><b>Nenhum lançamento ainda</b>Seus gastos aparecerão aqui.</div>';
  document.getElementById('people-summary').innerHTML=state.people.map((p,i)=>{const key=i===0?'p1':'p2', amount=ex.filter(e=>e.person===key).reduce((a,e)=>a+e.amount,0), incomePerson=inc.filter(x=>x.person===key).reduce((a,x)=>a+x.amount,0);return `<div class="mini-stat"><span><b>${safe(p)}</b><br><span class="small-muted">Renda ${money(incomePerson)}</span></span><span style="text-align:right"><b>${money(amount)}</b><br><span class="small-muted">Gastos pessoais</span></span></div>`}).join('')+`<div class="mini-stat"><span><b>Compartilhado</b></span><b>${money(ex.filter(e=>e.person==='shared').reduce((a,e)=>a+e.amount,0))}</b></div>`;
 }
-function expenseRow(e){const c=cat(e.categoryId)||{name:'Sem categoria',icon:'•'};return `<div class="list-row"><div class="list-icon">${safe(c.icon||'•')}</div><div class="list-main"><strong>${safe(e.description)}</strong><small>${formatDate(e.date)} · ${safe(c.name)} · ${safe(personName(e.person))}</small></div><div class="list-value">${money(e.amount)}<small>${safe(e.payment||'')}</small></div><button class="btn ghost small" onclick="editExpense('${e.id}')">Editar</button></div>`}
+function expenseRow(e){const c=cat(e.categoryId)||{name:'Sem categoria',icon:'•'};return `<div class="list-row"><div class="list-icon">${safe(c.icon||'•')}</div><div class="list-main"><strong>${safe(e.description)}</strong><small>${formatDate(e.date)} · ${safe(c.name)} · ${safe(personName(e.person))}</small></div><div class="list-value">${money(e.amount)}<small>${safe(e.payment||'')}</small></div><button class="btn ghost small" onclick="editExpense('${e.id}')">${e.isInstallmentLine?'Editar compra':'Editar'}</button></div>`}
 function formatDate(d){if(!d)return'—';const [y,m,day]=d.split('-');return `${day}/${m}/${y}`}
 function renderExpenses(){
  const q=(document.getElementById('expense-search')?.value||'').toLowerCase(), cf=document.getElementById('expense-category-filter')?.value||'', pf=document.getElementById('expense-person-filter')?.value||'';
- const ex=[...state.expenses].filter(e=>e.status!=='cancelled'&&e.date?.slice(0,7)===selectedMonth()).filter(e=>(!q||`${e.description} ${e.note||''}`.toLowerCase().includes(q))&&(!cf||e.categoryId===cf)&&(!pf||(pf==='Compartilhado'?e.person==='shared':e.person===(pf===state.people[1]?'p2':pf===state.people[0]?'p1':pf))));
+ const ex=expensesForMonth(selectedMonth()).filter(e=>(!q||`${e.description} ${e.note||''}`.toLowerCase().includes(q))&&(!cf||e.categoryId===cf)&&(!pf||(pf==='Compartilhado'?e.person==='shared':e.person===(pf===state.people[1]?'p2':pf===state.people[0]?'p1':pf))));
  ex.sort((a,b)=>b.date.localeCompare(a.date)||b.createdAt.localeCompare(a.createdAt));
  document.getElementById('expense-list').innerHTML=ex.length?ex.map(expenseRow).join(''):'<div class="empty"><b>Nenhum gasto encontrado</b>Experimente outro filtro ou adicione um lançamento.</div>';
 }
@@ -192,7 +209,7 @@ function renderBills(){
 function renderAnalytics(){
  const m=selectedMonth(), all=[...state.expenses].filter(e=>e.status!=='cancelled'), ex=expensesForMonth(m);
  const months=[];for(let i=5;i>=0;i--){const d=new Date(Number(m.slice(0,4)),Number(m.slice(5,7))-1-i,1);months.push(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`)}
- const totals=months.map(mm=>({month:mm,total:all.filter(e=>e.date?.slice(0,7)===mm).reduce((a,e)=>a+e.amount,0)}));
+ const totals=months.map(mm=>({month:mm,total:expensesForMonth(mm).reduce((a,e)=>a+e.amount,0)}));
  const nonzero=totals.filter(x=>x.total>0);setText('avg-expenses',money(nonzero.length?Math.round(nonzero.reduce((a,x)=>a+x.total,0)/nonzero.length):0));
  const bycat={};ex.forEach(e=>{if(e.items?.length)e.items.forEach(it=>bycat[it.categoryId||e.categoryId]=(bycat[it.categoryId||e.categoryId]||0)+it.amount);else bycat[e.categoryId]=(bycat[e.categoryId]||0)+e.amount});
  const top=Object.entries(bycat).sort((a,b)=>b[1]-a[1])[0];setText('top-category',top?(cat(top[0])?.name||'Outros'):'—');setText('top-category-sub',top?money(top[1]):'Sem lançamentos no mês');
@@ -209,7 +226,7 @@ function navigate(page){document.querySelectorAll('.page').forEach(p=>p.classLis
 function openModal(title,html){setText('modal-title',title);document.getElementById('modal-content').innerHTML=html;document.getElementById('modal-backdrop').classList.add('open')}
 function closeModal(){document.getElementById('modal-backdrop').classList.remove('open')}
 function personSelect(value='p1',includeShared=true){return `<select name="person">${state.people.map((p,i)=>`<option value="${i?'p2':'p1'}" ${(i?'p2':'p1')===value?'selected':''}>${safe(p)}</option>`).join('')}${includeShared?`<option value="shared" ${value==='shared'?'selected':''}>Compartilhado</option>`:''}</select>`}
-function paymentSelect(v='PIX'){return `<select name="payment">${['PIX','Cartão de crédito','Cartão de débito','Débito automático','Dinheiro','Transferência','Boleto','Outro'].map(x=>`<option ${x===v?'selected':''}>${x}</option>`).join('')}</select>`}
+function paymentSelect(v='PIX'){return `<select name="payment">${['PIX','Cartão de crédito','Cartão de débito','Cartão Benefício','Débito automático','Dinheiro','Transferência','Boleto','Outro'].map(x=>`<option ${x===v?'selected':''}>${x}</option>`).join('')}</select>`}
 function openExpense(id=''){
  const e=id?state.expenses.find(x=>x.id===id):null;
  openModal(e?'Editar gasto':'Novo gasto',`<form id="expense-form" onsubmit="saveExpense(event,'${id}')"><div class="form-grid">
@@ -228,13 +245,13 @@ function saveExpense(ev,id){ev.preventDefault();const f=ev.target,fd=new FormDat
  let e=id?state.expenses.find(x=>x.id===id):null;const oldCount=e?.installmentCount||1;
  const data={id:e?.id||uid(),description:String(fd.get('description')).trim(),amount,date:fd.get('date'),categoryId:fd.get('categoryId'),person:fd.get('person'),payment:fd.get('payment'),cardId:fd.get('cardId'),installmentCount:count,note:fd.get('note'),status:'confirmed',createdAt:e?.createdAt||new Date().toISOString(),updatedAt:new Date().toISOString()};
  if(e)Object.assign(e,data);else state.expenses.push(data);
- if(data.payment==='Cartão de crédito'&&count>1){state.installments=state.installments.filter(x=>x.expenseId!==data.id);const base=new Date(data.date+'T12:00:00');for(let i=0;i<count;i++){const d=new Date(base.getFullYear(),base.getMonth()+i,1);state.installments.push({id:uid(),expenseId:data.id,description:data.description,current:i+1,total:count,amount:Math.floor(amount/count)+(i===count-1?amount%count:0),month:`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`,cardName:state.cards.find(c=>c.id===data.cardId)?.name||'Cartão',status:'planned'})}}
+ if(data.payment==='Cartão de crédito'&&count>1){state.installments=state.installments.filter(x=>x.expenseId!==data.id);const base=new Date(data.date+'T12:00:00');for(let i=0;i<count;i++){const d=new Date(base.getFullYear(),base.getMonth()+i,1);state.installments.push({id:uid(),expenseId:data.id,description:data.description,current:i+1,total:count,amount:Math.floor(amount/count)+(i===count-1?amount%count:0),month:`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`,cardName:state.cards.find(c=>c.id===data.cardId)?.name||'Cartão',cardId:data.cardId,categoryId:data.categoryId,person:data.person,payment:data.payment,status:'planned'})}}
  else state.installments=state.installments.filter(x=>x.expenseId!==data.id);
  closeModal();persist();toast('Gasto salvo neste dispositivo.');}
 function editExpense(id){openExpense(id)}
 function deleteExpense(id){if(!confirm('Excluir este gasto e suas parcelas?'))return;state.expenses=state.expenses.filter(e=>e.id!==id);state.installments=state.installments.filter(x=>x.expenseId!==id);closeModal();persist();toast('Gasto excluído.')}
-function openIncome(id=''){const x=id?state.incomes.find(i=>i.id===id):null;openModal(x?'Editar renda':'Registrar renda',`<form onsubmit="saveIncome(event,'${id}')"><div class="form-grid"><div class="field full"><label>Descrição</label><input name="description" required value="${safe(x?.description||'Salário líquido')}"></div><div class="field"><label>Valor líquido (R$)</label><input name="amount" type="number" min=".01" step=".01" required value="${x?(x.amount/100).toFixed(2):''}"></div><div class="field"><label>Competência</label><input name="month" type="month" required value="${x?.month||selectedMonth()}"></div><div class="field"><label>Pessoa</label>${personSelect(x?.person||'p1',false)}</div><div class="field"><label>Observação</label><input name="note" value="${safe(x?.note||'')}"></div></div><div class="form-actions"><button type="button" class="btn ghost" onclick="closeModal()">Cancelar</button><button class="btn">Salvar renda</button></div></form>`)}
-function saveIncome(ev,id){ev.preventDefault();const fd=new FormData(ev.target),x=id?state.incomes.find(i=>i.id===id):null,data={id:x?.id||uid(),description:fd.get('description'),amount:cents(fd.get('amount')),month:fd.get('month'),person:fd.get('person'),note:fd.get('note')};if(x)Object.assign(x,data);else state.incomes.push(data);closeModal();persist();toast('Renda salva.')}
+function openIncome(id=''){const x=id?state.incomes.find(i=>i.id===id):null;openModal(x?'Editar renda':'Registrar renda',`<form onsubmit="saveIncome(event,'${id}')"><div class="form-grid"><div class="field full"><label>Descrição</label><input name="description" required value="${safe(x?.description||'Salário líquido')}"></div><div class="field"><label>Valor líquido (R$)</label><input name="amount" type="text" inputmode="decimal" autocomplete="off" required placeholder="Ex.: 3500,00" value="${x?(x.amount/100).toFixed(2).replace('.',','):''}"></div><div class="field"><label>Competência</label><input name="month" type="month" required value="${x?.month||selectedMonth()}"></div><div class="field"><label>Pessoa</label>${personSelect(x?.person||'p1',false)}</div><div class="field"><label>Observação</label><input name="note" value="${safe(x?.note||'')}"></div></div><div class="form-actions"><button type="button" class="btn ghost" onclick="closeModal()">Cancelar</button><button class="btn">Salvar renda</button></div></form>`)}
+function saveIncome(ev,id){ev.preventDefault();const fd=new FormData(ev.target),x=id?state.incomes.find(i=>i.id===id):null,rawAmount=String(fd.get('amount')||'').trim().replace(/\s/g,'').replace(/\.(?=\d{3}(?:\D|$))/g,'').replace(',','.'),amount=cents(rawAmount);if(!Number.isFinite(amount)||amount<=0){alert('Informe um valor de renda válido.');return}const data={id:x?.id||uid(),description:String(fd.get('description')||'').trim(),amount,month:fd.get('month'),person:fd.get('person'),note:fd.get('note')};if(x)Object.assign(x,data);else state.incomes.push(data);closeModal();persist();toast('Renda salva.')}
 function openBill(id=''){const b=id?state.bills.find(x=>x.id===id):null;openModal(b?'Editar conta':'Nova conta recorrente',`<form onsubmit="saveBill(event,'${id}')"><div class="form-grid"><div class="field full"><label>Nome da conta *</label><input name="name" required placeholder="Energia, água, internet..." value="${safe(b?.name||'')}"></div><div class="field"><label>Valor previsto (R$)</label><input name="amount" type="number" min="0" step=".01" required value="${b?(b.amount/100).toFixed(2):''}"></div><div class="field"><label>Próximo vencimento</label><input name="nextDue" type="date" required value="${b?.nextDue||today()}"></div><div class="field"><label>Categoria</label><select name="categoryId">${categoryOptions(b?.categoryId||state.categories.find(c=>c.name==='Moradia e consumo')?.id)}</select></div><div class="field"><label>Responsável</label>${personSelect(b?.person||'shared')}</div><div class="field"><label>Recorrência</label><select name="frequency">${['Mensal','Semanal','Anual','Pontual'].map(v=>`<option ${v===(b?.frequency||'Mensal')?'selected':''}>${v}</option>`).join('')}</select></div><div class="field"><label>Status deste vencimento</label><select name="paid"><option value="false" ${!b?.paid?'selected':''}>Pendente</option><option value="true" ${b?.paid?'selected':''}>Pago</option></select></div></div><div class="form-actions"><button type="button" class="btn ghost" onclick="closeModal()">Cancelar</button><button class="btn">Salvar conta</button></div></form>`)}
 function saveBill(ev,id){ev.preventDefault();const fd=new FormData(ev.target),b=id?state.bills.find(x=>x.id===id):null,data={id:b?.id||uid(),name:fd.get('name'),amount:cents(fd.get('amount')),nextDue:fd.get('nextDue'),categoryId:fd.get('categoryId'),categoryName:cat(fd.get('categoryId'))?.name,person:fd.get('person'),frequency:fd.get('frequency'),paid:fd.get('paid')==='true',active:true};if(b)Object.assign(b,data);else state.bills.push(data);closeModal();persist();toast('Conta salva.')}
 function editBill(id){openBill(id)}
@@ -402,7 +419,7 @@ function inferCategoryId(description){
  const rules=[
   [/arroz|feij|carne|frango|leite|p[aã]o|queijo|iogurte|fruta|legume|verdura|macarr[aã]o|biscoito|bolacha|caf[eé]|a[cç][uú]car|[oó]leo|suco|refrigerante|mercado|supermercado|hortifruti|padaria/,'Alimentação'],
   [/detergente|sab[aã]o|amaciante|desinfetante|esponja|água sanit[aá]ria|limpador|multiuso|saco de lixo|sab[aã]o em p[oó]/,'Limpeza'],
-  [/shampoo|condicionador|desodorante|creme dental|escova dental|sabonete|papel higi[eê]nico|absorvente|fralda|higiene/,'Higiene pessoal'],
+  [/shampoo|condicionador|desodorante|creme dental|escova dental|sabonete|papel higi[eê]nico|absorvente|fralda|higiene/,'Higiene'],
   [/farm[aá]cia|medicamento|rem[eé]dio|analg[eé]sico|vitamina|dipirona|paracetamol/,'Medicamentos e saúde'],
   [/gasolina|etanol|combust[ií]vel|estacionamento|uber|99 pop|ped[aá]gio|transporte/,'Transporte'],
   [/energia|eletricidade|sabesp|sanasa|água|internet|telefone|condom[ií]nio|g[aá]s encanado/,'Moradia e consumo']
