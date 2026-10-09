@@ -63,3 +63,11 @@ Os dados financeiros são guardados no `localStorage` deste navegador. Limpar da
 - A categoria padrão "Higiene pessoal" foi renomeada para "Higiene", inclusive nos dados existentes.
 - Categorias personalizadas continuam disponíveis em Configurações > Categorias, depois das categorias padrão (incluindo "Outros").
 - Compras no cartão de crédito parceladas passam a contar nos gastos mensais como parcelas individuais, distribuídas mês a mês a partir do mês da compra. A compra integral deixa de ser somada toda na competência inicial; análises e lista mensal usam o valor de cada parcela.
+
+
+## Ajustes V5 — análise financeira ampliada
+
+- Os nomes dos integrantes são editáveis em Configurações. Novas instalações começam com "Integrante 1" e "Integrante 2"; os dados existentes são preservados, e os nomes padrão antigos são migrados para esses nomes genéricos.
+- A área de Análises ganhou seletor de histórico (6, 12, 24 meses ou todo o histórico), indicadores de renda, gastos, saldo, taxa de poupança, média mensal, valor médio por lançamento, maior gasto e compromissos futuros.
+- Inclui gráficos em barras de fluxo de caixa e renda versus gastos, composição por categoria e forma de pagamento, comparativo por integrante, maiores despesas, observações automáticas e projeção dos próximos três meses.
+- As projeções usam média e tendência linear dos meses recentes, comparadas aos compromissos já cadastrados. A confiança indicada é baixa quando há poucos dados; não são garantias nem aconselhamento financeiro.

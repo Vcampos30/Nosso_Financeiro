@@ -86,23 +86,35 @@
     </section>
 
     <section id="page-analytics" class="page">
-      <div class="heading"><div><h2>Análises</h2><p>Entenda a evolução do dinheiro ao longo do tempo.</p></div></div>
-      <div class="cards">
-        <div class="card"><div class="metric-label">Média mensal</div><div class="metric" id="avg-expenses">R$ 0,00</div><div class="metric-sub">Meses com dados ou mês atual</div></div>
-        <div class="card"><div class="metric-label">Maior categoria</div><div class="metric" id="top-category" style="font-size:18px">—</div><div class="metric-sub" id="top-category-sub">No período selecionado</div></div>
+      <div class="heading"><div><h2>Central de análises</h2><p>Histórico, indicadores, composição dos gastos e projeções financeiras.</p></div></div>
+      <div class="panel"><div class="filters">
+        <label class="field"><span>Período histórico</span><select id="analytics-range" onchange="renderAnalytics()"><option value="6">Últimos 6 meses</option><option value="12" selected>Últimos 12 meses</option><option value="24">Últimos 24 meses</option><option value="all">Todo o histórico</option></select></label>
+        <div class="small-muted" id="analytics-period-note">Os indicadores usam os lançamentos disponíveis no dispositivo.</div>
+      </div></div>
+      <div class="cards section-gap">
+        <div class="card"><div class="metric-label">Renda no período</div><div class="metric" id="an-income">R$ 0,00</div><div class="metric-sub" id="an-income-sub">—</div></div>
+        <div class="card"><div class="metric-label">Gastos no período</div><div class="metric" id="an-expenses">R$ 0,00</div><div class="metric-sub" id="an-expenses-sub">—</div></div>
+        <div class="card"><div class="metric-label">Saldo acumulado</div><div class="metric" id="an-net">R$ 0,00</div><div class="metric-sub">Renda menos gastos registrados</div></div>
+        <div class="card"><div class="metric-label">Taxa de poupança</div><div class="metric" id="an-savings-rate">—</div><div class="metric-sub">Saldo ÷ renda no período</div></div>
       </div>
-      <div class="panel"><div class="panel-head"><h3>Últimos 6 meses</h3></div><div id="monthly-chart" class="category-list"></div></div>
-      <div class="grid2 section-gap">
-        <div class="panel"><h3>Renda por pessoa</h3><div id="income-breakdown"></div></div>
-        <div class="panel"><h3>Formas de pagamento</h3><div id="payment-breakdown"></div></div>
+      <div class="cards section-gap">
+        <div class="card"><div class="metric-label">Gasto médio mensal</div><div class="metric" id="an-monthly-average">R$ 0,00</div><div class="metric-sub">Média do período escolhido</div></div>
+        <div class="card"><div class="metric-label">Despesa média por lançamento</div><div class="metric" id="an-ticket">R$ 0,00</div><div class="metric-sub" id="an-ticket-sub">—</div></div>
+        <div class="card"><div class="metric-label">Maior gasto individual</div><div class="metric" id="an-largest">R$ 0,00</div><div class="metric-sub" id="an-largest-sub">—</div></div>
+        <div class="card"><div class="metric-label">Compromissos futuros</div><div class="metric" id="an-commitments">R$ 0,00</div><div class="metric-sub">Parcelas futuras e contas recorrentes</div></div>
       </div>
+      <div class="grid2 section-gap"><div class="panel"><div class="panel-head"><h3>Fluxo de caixa mensal</h3></div><div id="an-cashflow" class="category-list"></div></div><div class="panel"><div class="panel-head"><h3>Renda x gastos</h3></div><div id="an-income-expense" class="category-list"></div></div></div>
+      <div class="grid2 section-gap"><div class="panel"><div class="panel-head"><h3>Gastos por categoria</h3></div><div id="an-categories" class="category-list"></div></div><div class="panel"><div class="panel-head"><h3>Formas de pagamento</h3></div><div id="payment-breakdown" class="category-list"></div></div></div>
+      <div class="grid2 section-gap"><div class="panel"><div class="panel-head"><h3>Comparativo por integrante</h3></div><div id="income-breakdown"></div><div id="an-person-expenses" class="section-gap"></div></div><div class="panel"><div class="panel-head"><h3>Maiores despesas</h3></div><div id="an-top-expenses"></div></div></div>
+      <div class="panel section-gap"><div class="panel-head"><h3>Projeção dos próximos 3 meses</h3><span class="pill">Estimativa</span></div><p class="small-muted">Projeção baseada no padrão recente de renda e gastos, tendência histórica e compromissos já cadastrados. Não é uma garantia nem substitui o registro de despesas futuras.</p><div id="an-forecast" class="category-list"></div><div class="notice section-gap" id="an-forecast-note"></div></div>
+      <div class="panel section-gap"><div class="panel-head"><h3>Alertas e observações</h3></div><div id="an-insights"></div></div>
     </section>
 
     <section id="page-settings" class="page">
       <div class="heading"><div><h2>Configurações</h2><p>Personalize os cadastros e cuide dos seus dados.</p></div></div>
       <div class="panel"><h3>Quem usa o aplicativo</h3><div class="form-grid">
-        <div class="field"><label for="person1">Nome do primeiro membro</label><input id="person1" value="Você"></div>
-        <div class="field"><label for="person2">Nome do segundo membro</label><input id="person2" value="Esposa"></div>
+        <div class="field"><label for="person1">Nome do primeiro membro</label><input id="person1" placeholder="Ex.: Ana" maxlength="40"></div>
+        <div class="field"><label for="person2">Nome do segundo membro</label><input id="person2" placeholder="Ex.: Bruno" maxlength="40"></div>
       </div><div class="form-actions"><button class="btn" onclick="savePeople()">Salvar nomes</button></div></div>
       <div class="panel section-gap"><div class="panel-head"><h3>Categorias</h3><button class="btn secondary small" onclick="openCategory()">＋ Nova</button></div><div id="category-settings"></div></div>
       <div class="panel section-gap"><h3>Backup e exportação</h3><p class="small-muted">Guarde uma cópia regularmente. Um backup contém informações financeiras e deve ser mantido em local privado.</p>
@@ -142,10 +154,11 @@ const money=n=>new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).
 const cents=v=>Math.round((Number(v)||0)*100);
 const safe=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const monthLabel=m=>{if(!m)return'';const [y,mo]=m.split('-');return new Date(Number(y),Number(mo)-1,1).toLocaleDateString('pt-BR',{month:'long',year:'numeric'})};
-function freshState(){return {version:1,people:['Você','Esposa'],categories:DEFAULT_CATS.map((x,i)=>({id:uid(),name:x[0],icon:x[1],color:COLORS[i%COLORS.length],active:true})),expenses:[],incomes:[],cards:[],bills:[],installments:[],createdAt:new Date().toISOString()}}
+function freshState(){return {version:1,people:['Integrante 1','Integrante 2'],categories:DEFAULT_CATS.map((x,i)=>({id:uid(),name:x[0],icon:x[1],color:COLORS[i%COLORS.length],active:true})),expenses:[],incomes:[],cards:[],bills:[],installments:[],createdAt:new Date().toISOString()}}
 function loadState(){try{const x=JSON.parse(localStorage.getItem(STORE_KEY));if(x&&x.version===1)return x}catch(e){}return freshState()}
 let state=loadState(), billTab='bills';
 state.categories.forEach(c=>{if(c.name==='Higiene pessoal')c.name='Higiene'});
+if(state.people?.[0]==='Você'&&state.people?.[1]==='Esposa')state.people=['Integrante 1','Integrante 2'];
 function persist(){localStorage.setItem(STORE_KEY,JSON.stringify(state));renderAll()}
 function toast(msg){const el=document.getElementById('toast');el.textContent=msg;el.classList.remove('hidden');clearTimeout(window.__toastTimer);window.__toastTimer=setTimeout(()=>el.classList.add('hidden'),2600)}
 function selectedMonth(){return document.getElementById('monthPicker').value||monthNow()}
@@ -164,7 +177,12 @@ function cat(id){return state.categories.find(c=>c.id===id)}
 function personName(v){if(v==='shared')return'Compartilhado';return state.people[v==='p2'?1:0]||v}
 function categoryOptions(selected=''){return state.categories.filter(c=>c.active||c.id===selected).map(c=>`<option value="${c.id}" ${c.id===selected?'selected':''}>${safe(c.icon)} ${safe(c.name)}</option>`).join('')}
 function cardOptions(selected=''){return `<option value="">Não se aplica</option>`+state.cards.map(c=>`<option value="${c.id}" ${c.id===selected?'selected':''}>${safe(c.name)}</option>`).join('')}
-function renderAll(){renderHome();renderExpenses();renderBills();renderAnalytics();renderCategories();renderIncomes();fillFilters()}
+function renderAll(){syncPeopleFields();renderHome();renderExpenses();renderBills();renderAnalytics();renderCategories();renderIncomes();fillFilters()}
+function syncPeopleFields(){
+ const a=document.getElementById('person1'),b=document.getElementById('person2');
+ if(a&&document.activeElement!==a)a.value=state.people?.[0]||'Integrante 1';
+ if(b&&document.activeElement!==b)b.value=state.people?.[1]||'Integrante 2';
+}
 function renderIncomes(){
  const el=document.getElementById('income-management');if(!el)return;
  const arr=[...incomesForMonth()].sort((a,b)=>(a.person||'').localeCompare(b.person||'')||(a.description||'').localeCompare(b.description||''));
@@ -207,22 +225,65 @@ function renderBills(){
  }
 }
 function renderAnalytics(){
- const m=selectedMonth(), all=[...state.expenses].filter(e=>e.status!=='cancelled'), ex=expensesForMonth(m);
- const months=[];for(let i=5;i>=0;i--){const d=new Date(Number(m.slice(0,4)),Number(m.slice(5,7))-1-i,1);months.push(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`)}
- const totals=months.map(mm=>({month:mm,total:expensesForMonth(mm).reduce((a,e)=>a+e.amount,0)}));
- const nonzero=totals.filter(x=>x.total>0);setText('avg-expenses',money(nonzero.length?Math.round(nonzero.reduce((a,x)=>a+x.total,0)/nonzero.length):0));
- const bycat={};ex.forEach(e=>{if(e.items?.length)e.items.forEach(it=>bycat[it.categoryId||e.categoryId]=(bycat[it.categoryId||e.categoryId]||0)+it.amount);else bycat[e.categoryId]=(bycat[e.categoryId]||0)+e.amount});
- const top=Object.entries(bycat).sort((a,b)=>b[1]-a[1])[0];setText('top-category',top?(cat(top[0])?.name||'Outros'):'—');setText('top-category-sub',top?money(top[1]):'Sem lançamentos no mês');
- const max=Math.max(1,...totals.map(x=>x.total));
- document.getElementById('monthly-chart').innerHTML=totals.map(x=>`<div class="cat-row"><div class="cat-top">${safe(monthLabel(x.month))}</div><div class="cat-amount">${money(x.total)}</div><div class="bar"><span style="width:${x.total/max*100}%"></span></div></div>`).join('');
- const inc=incomesForMonth(m);document.getElementById('income-breakdown').innerHTML=state.people.map((p,i)=>{const key=i?'p2':'p1',v=inc.filter(x=>x.person===key).reduce((a,x)=>a+x.amount,0);return `<div class="mini-stat"><span>${safe(p)}</span><b>${money(v)}</b></div>`}).join('')+`<div class="mini-stat"><b>Total familiar</b><b>${money(inc.reduce((a,x)=>a+x.amount,0))}</b></div>`;
- const pay={};ex.forEach(e=>pay[e.payment||'Não informado']=(pay[e.payment||'Não informado']||0)+e.amount);
- document.getElementById('payment-breakdown').innerHTML=Object.entries(pay).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`<div class="mini-stat"><span>${safe(k)}</span><b>${money(v)}</b></div>`).join('')||'<div class="empty">Sem lançamentos no mês.</div>';
+ const range=document.getElementById('analytics-range')?.value||'12',end=selectedMonth();
+ const monthList=[...state.expenses.filter(e=>e.status!=='cancelled').map(e=>e.date?.slice(0,7)).filter(Boolean),...(state.installments||[]).filter(x=>x.status!=='cancelled').map(x=>x.month).filter(Boolean),...state.incomes.map(x=>x.month).filter(Boolean)].sort();
+ const earliest=monthList[0]||end,monthDiff=(a,b)=>(Number(b.slice(0,4))-Number(a.slice(0,4)))*12+Number(b.slice(5,7))-Number(a.slice(5,7));
+ const count=range==='all'?Math.max(1,monthDiff(earliest,end)+1):Number(range),months=[];
+ for(let i=count-1;i>=0;i--){const d=new Date(Number(end.slice(0,4)),Number(end.slice(5,7))-1-i,1);months.push(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`)}
+ const monthlyExpenses=mm=>expensesForMonth(mm).filter(e=>e.status!=='cancelled');
+ const expenseSum=mm=>monthlyExpenses(mm).reduce((a,e)=>a+e.amount,0),incomeSum=mm=>incomesForMonth(mm).reduce((a,x)=>a+x.amount,0);
+ const rows=months.map(month=>({month,expense:expenseSum(month),income:incomeSum(month),net:incomeSum(month)-expenseSum(month)}));
+ const sum=(arr,key)=>arr.reduce((a,x)=>a+(x[key]||0),0),totalExpense=sum(rows,'expense'),totalIncome=sum(rows,'income'),net=totalIncome-totalExpense;
+ const flat=months.flatMap(month=>monthlyExpenses(month)),avgTicket=flat.length?Math.round(totalExpense/flat.length):0,largest=[...flat].sort((a,b)=>b.amount-a.amount)[0],rate=totalIncome?net/totalIncome*100:null;
+ setText('an-income',money(totalIncome));setText('an-income-sub',`${state.incomes.filter(x=>months.includes(x.month)).length} lançamento(s) de renda`);
+ setText('an-expenses',money(totalExpense));setText('an-expenses-sub',`${flat.length} lançamento(s) contabilizados`);
+ setText('an-net',money(net));document.getElementById('an-net').classList.toggle('negative',net<0);
+ setText('an-savings-rate',rate===null?'Sem renda':`${rate.toFixed(1).replace('.',',')}%`);
+ setText('an-monthly-average',money(Math.round(totalExpense/count)));setText('an-ticket',money(avgTicket));setText('an-ticket-sub',`${flat.length} lançamento(s) no período`);
+ setText('an-largest',money(largest?.amount||0));setText('an-largest-sub',largest?`${safe(largest.description)} · ${formatDate(largest.date)}`:'Nenhum lançamento');
+ const futureInst=state.installments.filter(x=>x.status!=='cancelled'&&x.month>end).reduce((a,x)=>a+x.amount,0),futureBills=state.bills.filter(b=>b.active&&b.nextDue?.slice(0,7)>end).reduce((a,b)=>a+(b.amount||0),0);
+ setText('an-commitments',money(futureInst+futureBills));
+ const scale=Math.max(1,...rows.map(x=>x.expense),...rows.map(x=>x.income));
+ document.getElementById('an-cashflow').innerHTML=rows.map(x=>`<div class="cat-row"><div class="cat-top">${safe(monthLabel(x.month))}</div><div class="cat-amount">Saldo ${money(x.net)}</div><div class="bar"><span style="width:${Math.min(100,Math.abs(x.net)/scale*100)}%;background:${x.net<0?'#c55':'#2c6a51'}"></span></div><div class="small-muted">Renda ${money(x.income)} · Gastos ${money(x.expense)}</div></div>`).join('');
+ document.getElementById('an-income-expense').innerHTML=rows.map(x=>`<div class="cat-row"><div class="cat-top">${safe(monthLabel(x.month))}</div><div class="small-muted">Renda ${money(x.income)}</div><div class="bar"><span style="width:${x.income/scale*100}%;background:#2c6a51"></span></div><div class="small-muted">Gastos ${money(x.expense)}</div><div class="bar"><span style="width:${x.expense/scale*100}%;background:#d47f68"></span></div></div>`).join('');
+ const bycat={};flat.forEach(e=>{if(e.items?.length)e.items.forEach(it=>{const id=it.categoryId||e.categoryId;bycat[id]=(bycat[id]||0)+it.amount});else bycat[e.categoryId]=(bycat[e.categoryId]||0)+e.amount});
+ const cats=Object.entries(bycat).sort((a,b)=>b[1]-a[1]),catMax=Math.max(1,...cats.map(x=>x[1]));
+ document.getElementById('an-categories').innerHTML=cats.length?cats.map(([id,val])=>{const c=cat(id)||{name:'Sem categoria',icon:'•'};return `<div class="cat-row"><div class="cat-top">${safe(c.icon||'•')} ${safe(c.name)}</div><div class="cat-amount">${money(val)} <span class="small-muted">${totalExpense?(val/totalExpense*100).toFixed(1).replace('.',','):'0'}%</span></div><div class="bar"><span style="width:${val/catMax*100}%"></span></div></div>`}).join(''):'<div class="empty">Sem gastos no período.</div>';
+ const pay={};flat.forEach(e=>pay[e.payment||'Não informado']=(pay[e.payment||'Não informado']||0)+e.amount);
+ document.getElementById('payment-breakdown').innerHTML=Object.entries(pay).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`<div class="mini-stat"><span>${safe(k)} <span class="small-muted">${totalExpense?(v/totalExpense*100).toFixed(1).replace('.',',')+'%':''}</span></span><b>${money(v)}</b></div>`).join('')||'<div class="empty">Sem lançamentos no período.</div>';
+ const periodIncome=state.incomes.filter(x=>months.includes(x.month));
+ document.getElementById('income-breakdown').innerHTML=state.people.map((p,i)=>{const key=i?'p2':'p1',v=periodIncome.filter(x=>x.person===key).reduce((a,x)=>a+x.amount,0);return `<div class="mini-stat"><span>${safe(p)}</span><b>${money(v)}</b></div>`}).join('')+`<div class="mini-stat"><b>Total familiar</b><b>${money(totalIncome)}</b></div>`;
+ document.getElementById('an-person-expenses').innerHTML=state.people.map((p,i)=>{const key=i?'p2':'p1',v=flat.filter(x=>x.person===key).reduce((a,x)=>a+x.amount,0);return `<div class="mini-stat"><span>Gastos de ${safe(p)}</span><b>${money(v)}</b></div>`}).join('')+`<div class="mini-stat"><span>Compartilhado</span><b>${money(flat.filter(x=>x.person==='shared').reduce((a,x)=>a+x.amount,0))}</b></div>`;
+ const top=[...flat].sort((a,b)=>b.amount-a.amount).slice(0,8);
+ document.getElementById('an-top-expenses').innerHTML=top.length?top.map((e,i)=>`<div class="list-row"><div class="list-icon">${i+1}</div><div class="list-main"><strong>${safe(e.description)}</strong><small>${formatDate(e.date)} · ${safe(personName(e.person))}</small></div><div class="list-value">${money(e.amount)}</div></div>`).join(''):'<div class="empty">Sem gastos no período.</div>';
+ const recent=rows.slice(-Math.min(6,rows.length));
+ const slope=key=>{const n=recent.length,vals=recent.map(x=>x[key]);if(!n)return 0;const mx=(n-1)/2,my=vals.reduce((a,b)=>a+b,0)/n;let num=0,den=0;vals.forEach((v,i)=>{num+=(i-mx)*(v-my);den+=(i-mx)*(i-mx)});return den?num/den:0};
+ const baseExp=recent.length?sum(recent,'expense')/recent.length:0,baseInc=recent.length?sum(recent,'income')/recent.length:0,expSlope=slope('expense'),incSlope=slope('income');
+ const nonemptyExp=recent.filter(x=>x.expense>0).length,confidence=recent.length>=6&&nonemptyExp>=4?'moderada':recent.length>=3&&nonemptyExp>=2?'baixa a moderada':'baixa';
+ const forecast=[];
+ for(let i=1;i<=3;i++){
+   const d=new Date(Number(end.slice(0,4)),Number(end.slice(5,7))-1+i,1),mm=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+   const scheduled=state.installments.filter(x=>x.status!=='cancelled'&&x.month===mm).reduce((a,x)=>a+x.amount,0);
+   const bills=state.bills.filter(b=>b.active&&b.frequency==='Mensal').reduce((a,b)=>a+(b.amount||0),0),known=scheduled+bills;
+   const expense=Math.max(0,Math.round(baseExp+expSlope*i),known),income=Math.max(0,Math.round(baseInc+incSlope*i));
+   forecast.push({month:mm,expense,income,net:income-expense,known});
+ }
+ document.getElementById('an-forecast').innerHTML=forecast.map(x=>`<div class="cat-row"><div class="cat-top">${safe(monthLabel(x.month))}</div><div class="cat-amount">Saldo estimado ${money(x.net)}</div><div class="small-muted">Renda estimada ${money(x.income)} · gastos estimados ${money(x.expense)}</div><div class="bar"><span style="width:${Math.min(100,Math.abs(x.net)/Math.max(1,x.income,x.expense)*100)}%;background:${x.net<0?'#c55':'#2c6a51'}"></span></div><div class="small-muted">Compromissos cadastrados: ${money(x.known)}</div></div>`).join('');
+ const note=recent.length<3?'Há poucos meses de histórico; a projeção usa uma base limitada.':`Confiança ${confidence}: estimativa simples baseada nos últimos ${recent.length} meses.`;
+ document.getElementById('an-forecast-note').innerHTML=`<strong>Como interpretar</strong>${safe(note)} Valores podem variar com gastos extraordinários, alterações de renda, parcelas não cadastradas e sazonalidade.`;
+ const insights=[];
+ if(rate!==null){if(rate<0)insights.push(`Os gastos superaram a renda no período em ${money(Math.abs(net))}. Revise despesas variáveis e compromissos futuros.`);else if(rate>=20)insights.push(`A taxa de poupança foi ${rate.toFixed(1).replace('.',',')}%, acima de 20% no período.`);else insights.push(`A taxa de poupança foi ${rate.toFixed(1).replace('.',',')}%. Acompanhe a margem para ampliar a reserva.`)}
+ if(rows.length>=6){const recent3=rows.slice(-3),previous3=rows.slice(-6,-3),a=sum(previous3,'expense')/3,b=sum(recent3,'expense')/3;if(a>0){const delta=(b-a)/a*100;if(delta>=10)insights.push(`A média de gastos dos últimos 3 meses subiu ${delta.toFixed(1).replace('.',',')}% frente aos 3 meses anteriores.`);else if(delta<=-10)insights.push(`A média de gastos dos últimos 3 meses caiu ${Math.abs(delta).toFixed(1).replace('.',',')}% frente aos 3 meses anteriores.`)}}
+ if(cats.length){const [id,val]=cats[0];insights.push(`${cat(id)?.name||'Uma categoria'} representa ${totalExpense?(val/totalExpense*100).toFixed(1).replace('.',','):'0'}% dos gastos.`)}
+ if(flat.length<10)insights.push('Ainda há poucos lançamentos para identificar padrões com segurança. Registre os gastos regularmente para melhorar as análises.');
+ if(!state.incomes.length)insights.push('Cadastre as rendas para estimar saldo, taxa de poupança e projeções com mais utilidade.');
+ document.getElementById('an-insights').innerHTML=insights.map(t=>`<div class="mini-stat"><span>${safe(t)}</span></div>`).join('')||'<div class="empty">Sem alertas para o período.</div>';
+ setText('analytics-period-note',`${months.length} competência(s), de ${monthLabel(months[0])} a ${monthLabel(end)}. Projeções usam somente os dados cadastrados.`);
 }
 function renderCategories(){const el=document.getElementById('category-settings');if(!el)return;el.innerHTML=state.categories.map(c=>`<div class="list-row"><div class="list-icon" style="background:${c.color}18">${safe(c.icon)}</div><div class="list-main"><strong>${safe(c.name)}</strong><small>${c.active?'Ativa':'Inativa'}</small></div><button class="btn ghost small" onclick="editCategory('${c.id}')">Editar</button><button class="btn ghost small" onclick="toggleCategory('${c.id}')">${c.active?'Desativar':'Ativar'}</button></div>`).join('')}
 function fillFilters(){const el=document.getElementById('expense-category-filter');if(!el)return;const val=el.value;el.innerHTML='<option value="">Todas as categorias</option>'+state.categories.filter(c=>c.active).map(c=>`<option value="${c.id}">${safe(c.name)}</option>`).join('');el.value=val}
 function setText(id,t){const el=document.getElementById(id);if(el)el.textContent=t}
-function navigate(page){document.querySelectorAll('.page').forEach(p=>p.classList.toggle('active',p.id==='page-'+page));document.querySelectorAll('.nav-btn').forEach(b=>b.classList.toggle('active',b.dataset.page===page));if(page==='add'){}window.scrollTo({top:0,behavior:'smooth'})}
+function navigate(page){document.querySelectorAll('.page').forEach(p=>p.classList.toggle('active',p.id==='page-'+page));document.querySelectorAll('.nav-btn').forEach(b=>b.classList.toggle('active',b.dataset.page===page));if(page==='analytics')renderAnalytics();window.scrollTo({top:0,behavior:'smooth'})}
 function openModal(title,html){setText('modal-title',title);document.getElementById('modal-content').innerHTML=html;document.getElementById('modal-backdrop').classList.add('open')}
 function closeModal(){document.getElementById('modal-backdrop').classList.remove('open')}
 function personSelect(value='p1',includeShared=true){return `<select name="person">${state.people.map((p,i)=>`<option value="${i?'p2':'p1'}" ${(i?'p2':'p1')===value?'selected':''}>${safe(p)}</option>`).join('')}${includeShared?`<option value="shared" ${value==='shared'?'selected':''}>Compartilhado</option>`:''}</select>`}
@@ -265,7 +326,12 @@ function saveCategory(ev,id){ev.preventDefault();const fd=new FormData(ev.target
 function editCategory(id){openCategory(id)}
 function toggleCategory(id){const c=cat(id);if(c){c.active=!c.active;persist();toast(c.active?'Categoria ativada.':'Categoria desativada.');}}
 function setBillTab(t){billTab=t;renderBills()}
-function savePeople(){const a=document.getElementById('person1').value.trim()||'Você',b=document.getElementById('person2').value.trim()||'Esposa';state.people=[a,b];persist();toast('Nomes atualizados.')}
+function savePeople(){
+ const a=document.getElementById('person1').value.trim()||'Integrante 1';
+ const b=document.getElementById('person2').value.trim()||'Integrante 2';
+ if(a.toLocaleLowerCase()===b.toLocaleLowerCase()){alert('Use nomes diferentes para cada integrante.');return}
+ state.people=[a,b];persist();toast('Nomes dos integrantes atualizados.');
+}
 function exportBackup(){const snapshot=JSON.parse(JSON.stringify(state));ensureRecordIds(snapshot);const blob=new Blob([JSON.stringify({...snapshot,backupFormat:'nosso-financeiro-merge-v2',exportedAt:new Date().toISOString()},null,2)],{type:'application/json'});downloadBlob(blob,`nosso-financeiro-backup-${today()}.json`);toast('Backup exportado com IDs para mesclagem.')}
 function exportCSV(){const rows=[['data','descricao','valor_centavos','categoria','responsavel','pagamento','observacao'],...state.expenses.map(e=>[e.date,e.description,e.amount,cat(e.categoryId)?.name||'',personName(e.person),e.payment||'',e.note||''])];const csv=rows.map(r=>r.map(v=>`"${String(v??'').replace(/"/g,'""')}"`).join(';')).join('\r\n');downloadBlob(new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8'}),`gastos-${today()}.csv`);toast('CSV exportado.')}
 function downloadBlob(blob,name){const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1500)}
