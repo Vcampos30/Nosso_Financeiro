@@ -1,0 +1,19 @@
+{
+  "name": "Nosso Financeiro — Finanças do Casal",
+  "short_name": "Financeiro",
+  "description": "Controle local de despesas, renda, contas e cartões do casal.",
+  "lang": "pt-BR",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f5f7f4",
+  "theme_color": "#173d32",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
