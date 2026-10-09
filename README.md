@@ -71,3 +71,10 @@ Os dados financeiros são guardados no `localStorage` deste navegador. Limpar da
 - A área de Análises ganhou seletor de histórico (6, 12, 24 meses ou todo o histórico), indicadores de renda, gastos, saldo, taxa de poupança, média mensal, valor médio por lançamento, maior gasto e compromissos futuros.
 - Inclui gráficos em barras de fluxo de caixa e renda versus gastos, composição por categoria e forma de pagamento, comparativo por integrante, maiores despesas, observações automáticas e projeção dos próximos três meses.
 - As projeções usam média e tendência linear dos meses recentes, comparadas aos compromissos já cadastrados. A confiança indicada é baixa quando há poucos dados; não são garantias nem aconselhamento financeiro.
+
+
+## Versão 6 — ajustes de navegação e gráficos
+- Acesso permanente a **Ajustes** pela barra inferior; Configurações não fica mais escondida na tela Adicionar.
+- Nomes dos integrantes editáveis em **Ajustes → Quem usa o aplicativo**, com atualização dos filtros e rótulos em toda a interface.
+- A página Análises agora exibe gráficos SVG reais e responsivos: linha de saldo mensal, barras comparando renda e gastos e rosca da distribuição por categoria. Os gráficos são gerados com os lançamentos locais e não dependem de biblioteca externa.
+- A versão continua usando armazenamento local do navegador; faça backup JSON antes de substituir arquivos.
